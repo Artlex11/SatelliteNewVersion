@@ -286,8 +286,24 @@ public:
 };
 
 int main() {
+    
+    // сферические координаты для задания случайного положения спутника
 
-    Satellite satellite(0.0, 0.0, 600000.0, 4.4127); // Спутник над Землёй
+    double altitude = 600000.0;
+    double r = EARTH_RADIUS + altitude;
+    double theta = RandomGenerators::generateUniform(0.0, PI);
+    double phi = RandomGenerators::generateUniform(0.0, 2 * PI);
+
+    double x = r * cos(phi) * sin(theta);
+    double y = r * sin(phi) * sin(theta);
+    double z = r * cos(theta);
+
+    std::cout << sqrt(x * x + y * y + z * z) << std::endl;
+
+    // 2 вариант: 
+    /*Можно сгенерировать случайные координаты на единичной сфере(с помощью нормализации) и затем масштабировать их на нужный радиус.*/
+
+    Satellite satellite(x, y, z, 4.4127); // Спутник над Землёй
     satellite.printCoordinates();
 
     int nTiers; // Переменная для хранения количества уровней
