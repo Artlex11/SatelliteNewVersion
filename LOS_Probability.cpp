@@ -50,8 +50,8 @@ bool CalculateLOSProbability(int index, std::string scenario)
     }
 
     std::cout << "P_LOS: " << P_LOS << ", p: " << p;
-    bool los = (P_LOS > p);
-    std::cout << "\nLink - " << (los ? "LOS" : "NLOS") << std::endl;
+    bool nlos = (P_LOS > p);
+    std::cout << "\nLink - " << (nlos ? "LOS" : "NLOS") << std::endl;
 
-    return los;
+    return nlos;
 }
