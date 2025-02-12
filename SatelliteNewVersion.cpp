@@ -58,7 +58,7 @@ public:
 
     // Конструктор класс и инициализация параметров
     Satellite(double x, double y, double z, double beamWidth)
-        : x(x), y(y), z(z + EARTH_RADIUS), beamWidth(beamWidth)
+        : x(x), y(y), z(z), beamWidth(beamWidth)
     {
 
     }
