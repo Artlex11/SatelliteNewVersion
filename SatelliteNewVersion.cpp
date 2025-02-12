@@ -289,7 +289,7 @@ int main() {
     
     // сферические координаты для задания случайного положения спутника
 
-    double altitude = 1000000.0;
+    double altitude = 600000.0;
     double r = EARTH_RADIUS + altitude;
     double theta = RandomGenerators::generateUniform(0.0, PI);
     double phi = RandomGenerators::generateUniform(0.0, 2 * PI);
