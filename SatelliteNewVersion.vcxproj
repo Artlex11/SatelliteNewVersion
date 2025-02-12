@@ -105,7 +105,7 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>D:\Всё моё\Радиофак\Практика\РАДИО МОДУЛЬ\extentions\eigen-3.4.0\eigen-3.4.0</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Eigen</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
