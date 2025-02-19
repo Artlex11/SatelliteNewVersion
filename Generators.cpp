@@ -14,7 +14,6 @@ namespace RandomGenerators {
         return distribution(engine);
     }
 
-    // Реализация генератора равномерного распределения для целых чисел
     int generateUniform(int min, int max) {
         std::mt19937 engine;
         std::seed_seq seeds{
@@ -27,7 +26,6 @@ namespace RandomGenerators {
         return distribution(engine);
     }
 
-    // Реализация генератора равномерного распределения для дробных чисел
     double generateUniform(double min, double max) {
         std::mt19937 engine;
         std::seed_seq seeds{
@@ -40,7 +38,6 @@ namespace RandomGenerators {
         return distribution(engine);
     }
 
-    // Реализация генератора равномерного распределения из вектора для целых чисел
     int generateUniformFromVector(const std::vector<int>& values) {
         std::mt19937 engine;
         std::seed_seq seeds{
@@ -53,7 +50,6 @@ namespace RandomGenerators {
         return values[distribution(engine)];
     }
 
-    // Реализация генератора равномерного распределения из вектора для дробных чисел
     double generateUniformFromVector(const std::vector<double>& values) {
         std::mt19937 engine;
         std::seed_seq seeds{

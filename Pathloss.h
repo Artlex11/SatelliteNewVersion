@@ -1,7 +1,6 @@
 #ifndef PATHLOSS_H
 #define PATHLOSS_H
 #include <iostream>
-//#include "NTN_Deployment.h"
 #include "Tables.h"
 #include "Generators.h"
 

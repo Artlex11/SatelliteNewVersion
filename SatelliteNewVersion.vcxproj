@@ -105,11 +105,14 @@
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp17</LanguageStandard>
-      <AdditionalIncludeDirectories>Eigen</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>Eigen;D:\MATLAB24\extern\include</AdditionalIncludeDirectories>
+      <OpenMPSupport>true</OpenMPSupport>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>D:\MATLAB24\extern\lib\win64\mingw64</AdditionalLibraryDirectories>
+      <AdditionalDependencies>libeng.lib;libmx.lib;libmat.lib</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -130,7 +133,9 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Generators.cpp" />
+    <ClCompile Include="Links.cpp" />
     <ClCompile Include="LOS_Probability.cpp" />
+    <ClCompile Include="Matlab_plot.cpp" />
     <ClCompile Include="NTN_Deployment.cpp" />
     <ClCompile Include="Pathloss.cpp" />
     <ClCompile Include="SatelliteNewVersion.cpp" />
@@ -138,7 +143,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generators.h" />
+    <ClInclude Include="Links.h" />
     <ClInclude Include="LOS_Probability.h" />
+    <ClInclude Include="Matlab_plot.h" />
     <ClInclude Include="NTN_Deployment.h" />
     <ClInclude Include="Pathloss.h" />
     <ClInclude Include="Tables.h" />
