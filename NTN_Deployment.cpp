@@ -70,8 +70,8 @@ void SatelliteLink::generateLinks() {
     }
 
     for (const auto& user : xyzUEs_all) {
-        links.addLink(std::move(LinkData{ user, xyzSat, SatelliteLink::calculateElevetionAngle(user,xyzSat), Antenna{}, Antenna{} }));
-    }
+        links.addLink(std::move(LinkData{ user, xyzSat, SatelliteLink::calculateElevetionAngle(user,xyzSat), Antenna{}, Antenna{}, 0, (user-xyzSat).norm() /*добавить функцию для дистанции*/}));
+    }//norm - distance, normalize - vector
 
     transformCoordinates(0.0);
 }

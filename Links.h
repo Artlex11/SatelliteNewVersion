@@ -17,6 +17,9 @@ struct LinkData {
     Antenna userAntenna;
     Antenna satelliteAntenna;
     double PL_db;
+    // distance and LOS_p возможно поменять местами
+    double distance;
+    bool isLOS;
     double K_db;
     double Ds_sec;
     double ASA_deg;
