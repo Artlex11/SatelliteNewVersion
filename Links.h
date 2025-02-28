@@ -20,12 +20,14 @@ struct LinkData {
     // distance and LOS_p возможно поменять местами
     double distance;
     bool isLOS;
+    double SF_db; 
     double K_db;
-    double Ds_sec;
+    double DS_sec;
     double ASA_deg;
     double ASD_deg;
     double ZSA_deg;
     double ZSD_deg;
+    
 
 };
 
@@ -42,7 +44,7 @@ public:
     void addLink(LinkData&& link);
 
 
-    std::vector<LinkData> links;  // Вектор для хранения всех связей
+    std::vector<LinkData> links_vec;  // Вектор для хранения всех связей
 };
 
 #endif // LINKS_H

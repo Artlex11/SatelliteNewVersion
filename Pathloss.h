@@ -5,6 +5,7 @@
 #include <Eigen/Dense>
 
 #include "Generators.h"
+#include "Matlab_plot.h"
 
 // для работы с MATLAB
 #include "engine.h"
@@ -51,6 +52,8 @@ double CalculateInverseCummulativeNormalDistribution(double P);
 
 // Building entry loss
 double CalculateBuildingEntryLoss(double A, double B, double C);
+
+//double CalculatePathLossInGasses(double d, double f);
 #endif
 
 //double CalculateDistance(double Re, double h0, double alpha);

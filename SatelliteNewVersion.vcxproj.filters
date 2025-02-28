@@ -24,9 +24,6 @@
     <ClCompile Include="LOS_Probability.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NTN_Deployment.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Pathloss.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -39,15 +36,21 @@
     <ClCompile Include="Links.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LargeScaleParameters.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Satellite_link.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NTN_Deployment.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generators.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="LOS_Probability.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="NTN_Deployment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Pathloss.h">
@@ -60,6 +63,15 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Links.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LargeScaleParameters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Satellite_link.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="NTN_Deployment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

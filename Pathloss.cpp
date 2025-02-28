@@ -225,6 +225,115 @@ double CalculateBasisPathLoss(double FSPL, double SF, double CL)
 	return PL_b;
 }
 
+// Расчёт газовых потерь(неправильно), пока не учитываем.
+
+// Расчёт газовых потерь 
+//double CalculatePathLossInGasses(double d, double f) 
+//{
+//	Engine* ep;
+//	MATFile* pmat;
+//	mxArray* pa_xData;
+//	mxArray* pa_yData;
+//	double* xData;
+//	double* yData;
+//	int numElements;
+//
+//	// Запускаем MATLAB Engine
+//	ep = engOpen(NULL);
+//	if (ep == NULL) {
+//		std::cerr << "Не удалось запустить MATLAB Engine!" << std::endl;
+//		return 1;
+//	}
+//
+//	// Открываем .mat файл
+//	pmat = matOpen("D:\\Всё моё\\Радиофак\\Практика\\РАДИО МОДУЛЬ\\ЗАДАНИЕ 2 (СПУТНИК)\\ChannelModel_NTN\\LSP\\gasAttTable.mat", "r");
+//	if (pmat == NULL) {
+//		std::cerr << "Не удалось открыть .mat файл!" << std::endl;
+//		engClose(ep);
+//		return 1;
+//	}
+//
+//	// Читаем xData из .mat файла
+//	pa_xData = matGetVariable(pmat, "xData");
+//	if (pa_xData == NULL) {
+//		std::cerr << "Не удалось прочитать xData из .mat файла!" << std::endl;
+//		matClose(pmat);
+//		engClose(ep);
+//		return 1;
+//	}
+//
+//	// Читаем yData из .mat файла
+//	pa_yData = matGetVariable(pmat, "yData");
+//	if (pa_yData == NULL) {
+//		std::cerr << "Не удалось прочитать yData из .mat файла!" << std::endl;
+//		mxDestroyArray(pa_xData); // Освобождаем память, выделенную для xData
+//		matClose(pmat);
+//		engClose(ep);
+//		return 1;
+//	}
+//
+//	// Получаем данные из mxArray для xData
+//	numElements = mxGetNumberOfElements(pa_xData); // Должно быть 1000
+//	xData = mxGetPr(pa_xData);
+//
+//	// Получаем данные из mxArray для yData
+//	int numElementsY = mxGetNumberOfElements(pa_yData);  // Должно быть 1000
+//	yData = mxGetPr(pa_yData);
+//
+//	// Проверка, что оба массива имеют одинаковую длину (опционально)
+//	if (numElements != numElementsY) {
+//		std::cerr << "Внимание: массивы xData и yData имеют разную длину!" << std::endl;
+//	}
+//
+//	// Выводим несколько элементов для проверки
+//	/*std::cout << "Первые 5 элементов xData:" << std::endl;
+//	for (int i = 0; i < 5; ++i) {
+//		std::cout << xData[i] << " ";
+//	}
+//	std::cout << std::endl;
+//
+//	std::cout << "Первые 5 элементов yData:" << std::endl;
+//	for (int i = 0; i < 5; ++i) {
+//		std::cout << yData[i] << " ";
+//	}
+//	std::cout << std::endl;*/
+//
+//	double logFC = log10(f);
+//	//std::cout << "logFC: " << logFC << std::endl;
+//	int ind; // Переменная, которая ищет элемент из mat таблицы
+//
+//	for (int i = 0; i < 1000; ++i)
+//	{
+//		if (logFC > xData[i])
+//		{
+//			continue;
+//		}
+//		else
+//		{
+//			ind = i;
+//			break;
+//		}
+//
+//	}
+//
+//	//std::cout << "Index of element: " << ind << std::endl;
+//	//std::cout << "xData[index]: " << xData[ind] << std::endl;
+//	//std::cout << "yData[index]: " << yData[ind] << std::endl;
+//
+//	double PL_g;
+//
+//	PL_g = pow(10, yData[ind]) * d;
+//
+//	// Закрываем .mat файл и MATLAB Engine
+//	mxDestroyArray(pa_xData);
+//	mxDestroyArray(pa_yData);
+//	matClose(pmat);
+//	engClose(ep);
+//
+//	return PL_g;
+//}
+
+
 // Расчёт потерь при прохождении через здания
 
 

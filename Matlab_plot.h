@@ -12,6 +12,7 @@ public:
 
     void plotTransformedData(const std::vector<Eigen::Vector3d>& users, const Eigen::Vector3d& satellite);
     void plotEarth();
+    void plotRayPoints(const Eigen::Vector3d& satellitePosition, const std::vector<Eigen::Vector3d>& rays);
 
 private:
     Engine* ep;
