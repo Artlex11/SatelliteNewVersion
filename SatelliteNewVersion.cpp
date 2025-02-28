@@ -1,426 +1,408 @@
-﻿#include "LOS_Probability.h"
-#include "Tables.h"
-
-#include <iostream>
-#include <cmath>
-#include <complex>
-#include <random>
+﻿#include <iostream>
 #include <Eigen/Dense>
-#include <iomanip> // Для std::setprecision
+#include <vector>
+#include <chrono>
 
-// Глобальные константы
-const double EARTH_RADIUS = 6371000.0; // Радиус Земли в метрах
+#include "Satellite_link.h"
+#include "Tables.h"
+#include "Matlab_plot.h"
+#include "LOS_Probability.h"
+#include "LargeScaleParameters.h"
+#include "Pathloss.h"
 
-const double PI = 3.14159265358979323846; // Число Пи
 
-// Функция поворота Родрига
-Eigen::MatrixXd rotateAroundAxis(const Eigen::MatrixXd& inVect, const Eigen::Vector3d& ax, double angl)
-{
-    // Check if the input vector is 3-by-N
-    if (inVect.rows() != 3) {
-        throw std::invalid_argument("Input vector should be 3-by-N.");
+// Функция для вычисления диаграммы направленности
+void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) {
+    for (int i = 0; i < teta_rad.size(); ++i) {
+        double teta = teta_rad(i);
+        if (teta == 0) {
+            AP_dB(i) = 1.0;
+        }
+        else {
+            double bessel_arg = 2 * M_PI * rDish_WL * sin(teta);
+            double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
+            double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+            double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
+            AP_dB(i) = 10 * log10(res) + Gain;
+
+        }
     }
-
-    // Normalize the rotation axis
-    Eigen::Vector3d normalizedAx = ax.normalized();
-
-    // Calculate the components of the rotation axis
-    double x = normalizedAx(0);
-    double y = normalizedAx(1);
-    double z = normalizedAx(2);
-    double c = cos(angl);
-    double s = sin(angl);
-
-    // Construct the rotation matrix
-    Eigen::Matrix3d rotMatrix;
-    rotMatrix << c + (1 - c) * x * x, (1 - c)* x* y - s * z, (1 - c)* x* z + s * y,
-        (1 - c)* y* x + s * z, c + (1 - c) * y * y, (1 - c)* y* z - s * x,
-        (1 - c)* z* x - s * y, (1 - c)* z* y + s * x, c + (1 - c) * z * z;
-
-    // Perform the rotation
-    Eigen::MatrixXd outVect = rotMatrix * inVect;
-
-    return outVect;
 }
 
-class Satellite
-{
-
-private:
-
-    double x, y, z; // Координаты спутника
-    const double beamWidth; // Ширина луча
-    double elMinDegrees = 10.0; // Минимальный угол ( места ) видимости 
-    double elTargetDegrees = 90.0; // Угол цели спутника 
-    Eigen::MatrixXd uvSet; // Матрица для хранения UV-координат
-
-public:
-
-    // Конструктор класс и инициализация параметров
-    Satellite(double x, double y, double z, double beamWidth)
-        : x(x), y(y), z(z + EARTH_RADIUS), beamWidth(beamWidth)
-    {
-
-    }
-
-    double getBeamWidth() const
-    {
-        return beamWidth;
-    }
-
-    void printCoordinates() const
-    {
-        std::cout << "Satellite Coordinates: (" << x << ", " << y << ", " << z << ")\n";
-    }
-
-    // метод для расчета угла места
-    void calculateZenithAngle(Eigen::MatrixXd& users)
-    {
-        // Проверка, что матрица имеет 3 строки
-        if (users.rows() != 3)
-        {
-            std::cerr << "Error: The input matrix must have 3 rows for x, y, z coordinates." << std::endl;
-            return;
-        }
-
-        // Проверка, что матрица имеет хотя бы одну колонку
-        int nUEs = users.cols();
-        if (nUEs == 0)
-        {
-            std::cerr << "Error: The input matrix must have at least one column." << std::endl;
-            return;
-        }
-
-        // Добавляем четвертую строку для углов
-        users.conservativeResize(4, nUEs);
-
-        for (int col = 0; col < nUEs; ++col)
-        {
-            // Разностный вектор
-            double dx = x - users(0, col);
-            double dy = y - users(1, col);
-            double dz = z - users(2, col);
-
-            // Нормируем разностный вектор
-            double distance = std::sqrt(dx * dx + dy * dy + dz * dz);
-            double norm_dx = dx / distance;
-            double norm_dy = dy / distance;
-            double norm_dz = dz / distance;
-
-            // Нормальный вектор пользователя (от центра Земли)
-            double normal_x = users(0, col) / EARTH_RADIUS;
-            double normal_y = users(1, col) / EARTH_RADIUS;
-            double normal_z = users(2, col) / EARTH_RADIUS;
-
-            // Скалярное произведение
-            double dot_product = normal_x * norm_dx + normal_y * norm_dy + normal_z * norm_dz;
-            std::cout << dot_product << std::endl;
-
-            // Находим угол места (аркосинус)
-            double elevation_angle = std::acos(dot_product) * 180 / PI; // почти все углы в интервале от 90 до 180 - Земля прозрачная, надо отсечь
-
-            // Устанавливаем угол в четвертую строку
-            users(3, col) = elevation_angle;
-        }
-    }
-
-    // разброс пользователей
-    Eigen::MatrixXd dropUEs(int nTiers, int nUePerCell) {
-        double beamWidthRadians = beamWidth * (PI / 180.0);
-        double uvStep = sin(beamWidthRadians * 0.865); // Шаг UV
-        double r = nTiers * uvStep;
-
-        // Генерация координат
-        int size = (2 * nTiers + 1);
-        Eigen::MatrixXd uvSet(size * size, 2); // 2 столбца для U и V
-        int index = 0;
-
-        for (int i = -nTiers; i <= nTiers; ++i) {
-            for (int j = -nTiers; j <= nTiers; ++j) {
-                // Расчет U и V координат
-                double u_val = i * uvStep - (j * (uvStep / 2));
-                double v_val = (j * (sqrt(3) * uvStep / 2));
-
-                // Проверка, находится ли точка внутри шестиугольника
-                if (fabs(u_val + v_val / sqrt(3)) <= r + 1e-10 &&
-                    fabs(u_val - v_val / sqrt(3)) <= r + 1e-10) {
-                    uvSet(index, 0) = u_val;
-                    uvSet(index, 1) = v_val;
-                    index++;
-                }
-            }
-        } // для чего в проверке поправка 1e-10
-
-        // Обрезаем матрицу до фактического размера
-        uvSet.conservativeResize(index, Eigen::NoChange);
-
-        std::cout << "uvStep: " << uvStep << std::endl;
-        std::cout << "uvSet rows: " << uvSet.rows() << std::endl;
-        //std::cout << "uvSet:\n" << uvSet << std::endl;
-
-        // Три угла из Matlaba
-        double phiMax = PI - (PI / 180.0 * (90.0 + elMinDegrees)) - std::asin(std::sin(PI / 180.0 * (90.0 + elMinDegrees)) * EARTH_RADIUS / (EARTH_RADIUS + z));
-        double phiSat = PI - (PI / 180.0 * (90.0 + elTargetDegrees)) - std::asin(std::sin(PI / 180.0 * (90.0 + elTargetDegrees)) * EARTH_RADIUS / (EARTH_RADIUS + z));
-        double thetaSat = PI - phiSat - (PI / 180.0 * (90 + elTargetDegrees));
-
-        // Ещё один угол
-        double threshold = EARTH_RADIUS * std::cos(phiMax);
-
-        int nUEs = nUePerCell * index; // Количество пользователей на основе сгенерированных UV координат
-        Eigen::MatrixXd xyzUEs_all(3, nUEs * 10); // Вектор для хранения координат пользователей
-        Eigen::MatrixXd finalxyzUEs_all(3, nUEs);
-
-        int UEcnt = 0;
-
-        while (UEcnt != nUEs)
-        {
-
-            std::random_device rd;
-            std::mt19937 gen(rd());
-            std::normal_distribution<double> dist(0.0, 1.0);
-
-            for (int i = 0; i < nUEs * 10; ++i)
-            {
-                double xyz[3] = { dist(gen), dist(gen), dist(gen) }; // Трёхмерный Гаусс
-                double VectorLenght = std::sqrt(xyz[0] * xyz[0] + xyz[1] * xyz[1] + xyz[2] * xyz[2]); // радиус вектор до сгенерированного пользователя
-                xyzUEs_all(0, i) = EARTH_RADIUS * (xyz[0] / VectorLenght);
-                xyzUEs_all(1, i) = EARTH_RADIUS * (xyz[1] / VectorLenght);
-                xyzUEs_all(2, i) = EARTH_RADIUS * (xyz[2] / VectorLenght);
-            }
-
-            // Фильтрация столбцов
-            std::vector<int> valid_indices;
-            for (int i = 0; i < nUEs; ++i)
-            {
-                if (abs(xyzUEs_all(2, i)) >= threshold)
-                {
-                    valid_indices.push_back(i);
-                }
-            }
-            // я тут
-            // 
-            // 
-            // 
-            // 
-            // Создание новой матрицы с отфильтрованными столбцами
-            Eigen::MatrixXd filtered_xyzUEs_all(3, valid_indices.size());
-            for (size_t i = 0; i < valid_indices.size(); ++i)
-            {
-                filtered_xyzUEs_all.col(i) = xyzUEs_all.col(valid_indices[i]);
-            }
-
-            Eigen::Vector3d xyzSat(x, y, z);
-
-            Eigen::MatrixXd xyzUEstoSat(3, filtered_xyzUEs_all.cols());
-            Eigen::MatrixXd uvUEstoSat(2, filtered_xyzUEs_all.cols());
-            Eigen::MatrixXd uvDistance(uvSet.rows(), uvUEstoSat.cols());
-            // Вычисляем разности
-            for (int i = 0; i < xyzUEstoSat.cols(); ++i)
-            {
-                xyzUEstoSat.col(i) = xyzSat - xyzUEs_all.col(i);
-                xyzUEstoSat.col(i).normalize();
-                xyzUEstoSat.col(i) = rotateAroundAxis(xyzUEstoSat.col(i), Eigen::Vector3d(0, 0, 1), thetaSat);
-                uvUEstoSat(0, i) = xyzUEstoSat(1, i); // y-координата
-                uvUEstoSat(1, i) = xyzUEstoSat(2, i); // z-координата
-            }
-
-            // Вычисляем расстояния
-            for (int i = 0; i < uvSet.rows(); ++i) {
-                for (int j = 0; j < uvUEstoSat.cols(); ++j)
-                {
-                    // Вычисляем евклидово расстояние между uvSet и uvUEstoSat
-                    double deltaU = uvUEstoSat(0, j) - uvSet(i, 0);
-                    double deltaV = uvUEstoSat(1, j) - uvSet(i, 1);
-                    uvDistance(i, j) = std::sqrt(deltaU * deltaU + deltaV * deltaV); // Расстояние
-                }
-            }
-
-            // Применяем условие abs(uvDistance) <= uvBeamRadius
-            Eigen::Matrix<bool, Eigen::Dynamic, Eigen::Dynamic> indCellUE(1, uvUEstoSat.cols());
-            indCellUE.setZero(); // Инициализация
-            double uvBeamRadius = uvStep * sqrt(3);
-            for (size_t j = 0; j < uvUEstoSat.cols(); ++j)
-            {
-                indCellUE(0, j) = false; // Изначально считаем, что ничего не найдено
-                for (size_t i = 0; i < uvSet.rows(); ++i) {
-                    if (uvDistance(i, j) <= uvBeamRadius) {
-                        indCellUE(0, j) = true; // Нашли хотя бы одно значение удовлетворяющее условию
-                        break; // Можно прекратить поиск
-                    }
-                }
-            }
-
-            // Извлечение хороших UE
-            Eigen::MatrixXd xyzGoodUEs; // Для хранения допустимых UE
-            std::vector<int> goodUEIndices;
-
-            for (int j = 0; j < uvUEstoSat.cols(); ++j) {
-                if (indCellUE(0, j)) {
-                    goodUEIndices.push_back(j);
-                }
-            }
-
-            // Получаем количество хороших UE
-            int nGoodUEs = goodUEIndices.size();
-            int nUEsToInclude = std::min(nUEs - UEcnt, nGoodUEs);
-
-            // Копируем координаты хороших UE в xyzUEs_all
-            for (int k = 0; k < nUEsToInclude; ++k) {
-                finalxyzUEs_all.col(k + UEcnt) = filtered_xyzUEs_all.col(goodUEIndices[k]);
-            }
-
-            UEcnt += nUEsToInclude;
-        }
-        // После завершения заполнения матрицы xyzUEs_all
-        /*std::cout << "UE Coordinates (x, y, z):" << std::endl;
-        for (int col = 0; col < finalxyzUEs_all.cols(); ++col) {
-            std::cout << "Column " << col + 1 << ": ("
-                << finalxyzUEs_all(0, col) << ", "
-                << finalxyzUEs_all(1, col) << ", "
-                << finalxyzUEs_all(2, col) << ")" << std::endl;
-        }*/
-        return finalxyzUEs_all;
-    }
-
-
-};
-
 int main() {
-    
-    // сферические координаты для задания случайного положения спутника
+    MatlabPlot plotter;
+    plotter.plotEarth();
 
-    double altitude = 1000000.0;
-    double r = EARTH_RADIUS + altitude;
-    double theta = RandomGenerators::generateUniform(0.0, PI);
-    double phi = RandomGenerators::generateUniform(0.0, 2 * PI);
+    while (true) {
 
-    double x = r * cos(phi) * sin(theta);
-    double y = r * sin(phi) * sin(theta);
-    double z = r * cos(theta);
+        // Scenario options
+        std::vector<std::string> scenarios = { "Dense_Urban", "Urban", "Suburban", "Rural" };
+        std::vector<std::string> frequencyBands = { "S", "Ka" };
 
-    std::cout << sqrt(x * x + y * y + z * z) << std::endl;
-
-    // 2 вариант: 
-    /*Можно сгенерировать случайные координаты на единичной сфере(с помощью нормализации) и затем масштабировать их на нужный радиус.*/
-
-    Satellite satellite(x, y, z, 4.4127); // Спутник над Землёй
-    satellite.printCoordinates();
-
-    int nTiers; // Переменная для хранения количества уровней
-    std::cout << "Input number of levels (nTiers): ";
-    std::cin >> nTiers; // Ввод количества уровней
-
-    Eigen::MatrixXd users = satellite.dropUEs(nTiers, 10); // Генерируем UV-плоскость
-    satellite.calculateZenithAngle(users);
-    std::cout << "UE Coordinates (x, y, z):" << std::endl;
-    for (int col = 0; col < users.cols(); ++col) {
-        std::cout << "Column " << col + 1 << ": ("
-            << users(0, col) << ", "
-            << users(1, col) << ", "
-            << users(2, col) << ", "
-            << users(3, col) << " grad )" << std::endl;
-    }
-
-    std::string scenario;
-    double f;
-    bool los;
-
-    std::cout << "\nInput scenario (Dense_Urban/Urban/Suburban/Rural): ";
-    std::cin >> scenario;
-    std::cout << "\nInput frequency(f) in GHz: ";
-    std::cin >> f;
-
-    for (int col = 0; col < users.cols(); ++col)
-    {
-        double deg = users(3, col);
-
-        int index = int(AngleForLSP(deg)) / 10;
-        std::cout << "User " << col << ": index: " << index << ", angle: " << AngleForLSP(deg) << "\n";
-        los = CalculateLOSProbability(index, scenario);
-
-        MatrixXd Table = GenerateMatrix(los, f, scenario);
-
-        if (los)
-        {
-            VectorXd Parameters{ 45 };
-            Parameters = Table.col(index - 1);
+        // Scenario selection
+        std::cout << "Select a scenario:\n";
+        for (size_t i = 0; i < scenarios.size(); ++i) {
+            std::cout << i + 1 << ". " << scenarios[i] << "\n";
         }
-        else
-        {
-            VectorXd Parameters{ 38 };
-            Parameters = Table.col(index - 1);
+        std::cout << "Enter scenario number (1-" << scenarios.size() << ") or 0 to exit: ";
+
+        int scenarioChoice;
+        std::cin >> scenarioChoice;
+
+        if (scenarioChoice == 0) {
+            break; // Exit the loop
         }
+        else if (scenarioChoice < 1 || scenarioChoice > scenarios.size()) {
+            std::cout << "Invalid choice. Please try again.\n";
+            continue; // Repeat the loop
+        }
+
+        std::string scenario = scenarios[scenarioChoice - 1];
+
+        // Frequency band selection
+        std::cout << "Select a frequency band:\n";
+        for (size_t i = 0; i < frequencyBands.size(); ++i) {
+            std::cout << i + 1 << ". " << frequencyBands[i] << " band\n";
+        }
+        std::cout << "Enter frequency band number (1-" << frequencyBands.size() << "): ";
+
+        int frequencyChoice;
+        std::cin >> frequencyChoice;
+
+        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) {
+            std::cout << "Invalid choice. Please try again.\n";
+            continue; // Repeat the loop
+        }
+
+        double f = (frequencyChoice == 1) ? 2.0 : 30.0; // Example: 2 GHz for S and 30 GHz for Ka
+
+
+        double elTargetDegrees;
+        std::cout << "Enter elTargetDegrees  [grad]  (90 - nadir) : ";
+        std::cin >> elTargetDegrees;
+        double azTargetDegrees;
+        std::cout << "Enter azTargetDegrees  [grad]   : ";
+        std::cin >> azTargetDegrees;
+
+        double altitude = 600.0;
+
+        auto start = std::chrono::high_resolution_clock::now();
+        SatelliteLink UEswithSat(2, 0, 10, altitude, 10.0, elTargetDegrees, azTargetDegrees);
+        UEswithSat.generateLinks();
+
+        auto end = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> elapsed = end - start;
+        std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+
+        // генератор для шума
+        std::random_device rd;  // Источник энтропии
+        std::mt19937 gen(rd()); // Генератор случайных чисел (Mersenne Twister)
+        std::normal_distribution<> dist(0, 0.72); // Нормальное распределение с mean=0 и stddev=0.72
+
+        // параметры для CINR, CNR, CIR
+        double BW_MHz = 30;
+        double Ptx_dBW = 4 + 10 * log10(BW_MHz);
+        double NF_dB = 7;
+        double k_dBWHz = -228.6;
+        double T = 290;
+
+        double Pn_dBW = k_dBWHz + 10 * log10(T) + 10 * log10(BW_MHz * 1e6) + NF_dB;   
+        double Pn_lin = pow(10, (Pn_dBW / 10));
+
+        std::vector<Eigen::Vector3d> users;
+        for (const auto& link : UEswithSat.links.getLinks()) {
+            users.push_back(link.userPosition);
+        }
+
+
+        plotter.plotTransformedData(users, UEswithSat.links.getLinks()[0].satellitePosition);
+        //plotter.plotEarth();
+
+        // Generate tables for LOS and NLOS
+        MatrixXd TableLOS = GenerateMatrix(true, f, scenario);
+        MatrixXd TableNLOS = GenerateMatrix(false, f, scenario);
+
+        std::vector<Eigen::Vector3d> rRays = UEswithSat.getVectorsToCellCenters();
+
+        MatrixXd AP_lin(UEswithSat.links.getLinks().size(), rRays.size());
+        double rDish_WL = 2e9 / 299792458;
+        int countLink = 0;
+
+        for (auto& link : UEswithSat.links.getLinks()) {
+            double deg = link.elevationAngle;
+            int index = int(AngleForLSP(deg)) / 10;
+            bool isLos = CalculateLOSProbability(index, scenario);
+
+            MatrixXd Table = true ? TableLOS : TableNLOS;
+            VectorXd Parameters = Table.col(index - 1);
+            LSP::initializeParameters(isLos, link, Parameters);
+
+
+            for (int i = 0; i < static_cast<int> (rRays.size()); ++i) {
+
+                double theta = std::acos(rRays[i].dot((link.userPosition - link.satellitePosition).normalized()));
+
+
+                if (theta == 0) {
+                    AP_lin(countLink, i) = pow(10.0, 1.0 / 20.0);
+                }
+                else {
+                    double bessel_arg = 2 * M_PI * rDish_WL * sin(theta);
+                    double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
+                    double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+                    double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
+                    AP_lin(countLink, i) = pow(10.0, (10 * log10(res) + Gain) / 20.0);
+                }
+            }
+
+            double d = CalculateDistance(EARTH_RADIUS, altitude, deg * PI / 180);
+            
+            std::cout << "Distance: " << d;
+
+            double std = ChooseSTD(isLos, f, deg, scenario);
+            //std::cout << "\nSTD for SF: " << std;
+
+            double SF = GenerateSF(std);
+            //std::cout << "\nSF: " << SF;
+
+            double FSPL = Calculate_FSPL(d, f);
+            //std::cout << "\nFSPL: " << FSPL;
+
+            double CL = ChooseCL(isLos, f, deg, scenario);
+            //std::cout << "\nCL: " << CL;
+
+            double PL_b = CalculateBasisPathLoss(FSPL, SF, CL);
+            std::cout << "\nPL_b: " << PL_b << std::endl;
+            
+            double PL_dB = PL_b + dist(gen);
+
+            // Перевод в линейный масштаб
+            double PL_lin_magnitude = pow(10, -1 * PL_dB / 20);
+
+            double maxVal = AP_lin.row(countLink).maxCoeff(); // Максимальное значение в строке
+            int maxColIndex;
+            AP_lin.row(countLink).maxCoeff(&maxColIndex); // Индекс максимального значения
+
+            double attSignal_magn = PL_lin_magnitude * maxVal;
+
+            double attInterference_magn = sqrt(pow(PL_lin_magnitude * maxVal, 2) - attSignal_magn * attSignal_magn);
+
+            /*double Prx_lin = pow(10, (Ptx_dBW / 10)) * attSignal_magn * attSignal_magn;         
+            double Prx_dBW = 10 * log10(Prx_lin);
+
+            double Pint_lin = pow(10, (Ptx_dBW / 10)) * attInterference_magn * attSignal_magn;  
+            double Pint_dBW = 10 * log10(Pint_lin);*/
+
+            /*double DL_CNR_dB = Prx_dBW - Pn_dBW;
+            double DL_CIR_dB = Prx_dBW - Pint_dBW;
+            double DL_CINR_dB = Prx_dBW - 10 * log10(Pn_lin + Pint_lin);*/
+
+            double Prx_dBM = 4 + 10 * log10(BW_MHz);
+            double Prd_dBM = k_dBWHz + 10 * log10(290) + 10 * log10(BW_MHz * 160) + NF_dB;
+            double Prx_in = pow(10, Prx_dBM / 10) * attSignal_magn * attSignal_magn;
+            double Pint_in = pow(10, Prx_dBM / 10) * attInterference_magn * attInterference_magn;
+            double DL_CNR_dB = Prx_dBM - Prd_dBM;
+            double DL_CIR_dB = Prx_dBM - 10 * log10(Pint_in);
+            double DL_CINR_dB = Prx_dBM - 10 * log10(Prx_in + Pint_in);
+
+            std::cout << "Link #" << countLink + 1 << ": Max AP_lin = " << maxVal << ", Ray #" << maxColIndex + 1 << std::endl;
+            std::cout << "CNR, CIR, CINR: " << DL_CNR_dB << ", " << DL_CIR_dB << ", " << DL_CINR_dB << std::endl;
+
+            countLink += 1;
+        }
+        
+
+        for (int i = 0; i < AP_lin.rows(); ++i) {
+            for (int j = 0; j < AP_lin.cols(); ++j) {
+                std::cout << AP_lin(i, j) << " "; // Выводим элемент
+            }
+            std::cout << std::endl; // Переход на новую строку после вывода строки
+        }
+
+
+
+        for (size_t i = 0; i < rRays.size(); ++i) {
+            std::cout << "Vector " << i +1 << ": "
+                << rRays[i].transpose() << std::endl;
+        }
+        
+
+        //plotter.plotRayPoints(UEswithSat.links.getLinks()[0].satellitePosition, rRays);
+
+
+        // Вычисление диаграммы направленности
+        //calculateDishPattern(elTargetDegrees, AP_dB, rDish_WL);
+
 
     }
 
     return 0;
+
 }
 
-// Определение данных из таблиц в зависимости от углов для юзеров, округление к ближайшей колонке
-
-
-////std::cout << "\n" << Table.rows() << " " << Table.cols();
-//std::cout << "\n" << Table << "\n";
-//std::vector<std::string> Names;
-//// Сценарии Dense_Urban/Urban/Suburban 
-//if (scenario != "Rural")
+//#include <iostream>
+//#include <Eigen/Dense>
+//#include <vector>
+//#include <chrono>
+//
+//#include "NTN_Deployment.h"
+//#include "Tables.h"
+//#include "Matlab_plot.h"
+//#include "LOS_Probability.h"
+//#include "Pathloss.h"
+//#include "LargeScaleParameters.h"
+//
+//
+//
+//int main() 
 //{
-//    if (los)
-//    {
-//        std::vector<std::string> NamesLOS = {
-//            // LSP
-//            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
-//            // Correlation coefficients
-//            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-//            // Other Parameters
-//            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
-//        Names = NamesLOS;
+//    std::string scenario;
+//    double f;
+//    bool isLos;
+//    double altitude;
+//
+//    std::cout << "\nInput scenario (Dense_Urban/Urban/Suburban/Rural): ";
+//    std::cin >> scenario;
+//    std::cout << "\nInput frequency(f) in GHz: ";
+//    std::cin >> f;
+//    std::cout << "\nInput altitude in kilometers: ";
+//    std::cin >> altitude;
+//    auto start = std::chrono::high_resolution_clock::now();
+//
+//    SatelliteLink UEswithSat(2, 4, 10, altitude, 10, 30); // вместо чисел вставить переменные, потому что где-то надо их вызывать
+//    UEswithSat.generateLinks();
+//
+//    auto end = std::chrono::high_resolution_clock::now();
+//    std::chrono::duration<double> elapsed = end - start;
+//
+//    //std::cout << "Elapsed time: " << elapsed.count() << " s\n";
+//
+//    std::vector<Eigen::Vector3d> users;
+//    for (const auto& link : UEswithSat.links.getLinks()) {
+//        users.push_back(link.userPosition);
 //    }
 //
-//    else
-//    {
-//        std::vector<std::string> NamesNLOS = {
-//            // LSP
-//            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
-//            // Correlation coefficients
-//            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-//            // Other Parameters
-//            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "CL:      " };
-//        Names = NamesNLOS;
+//
+//    // Создание объекта для построения графиков
+//    MatlabPlot plotter;
+//
+//    // Построение графиков
+//    plotter.plotTransformedData(users, UEswithSat.links.getLinks()[0].satellitePosition);
+//    plotter.plotEarth();
+//
+//    MatrixXd TableLOS = GenerateMatrix(true, f, scenario);
+//    MatrixXd TableNLOS = GenerateMatrix(false, f, scenario);
+//
+//    for (auto& link : UEswithSat.links.getLinks()) {
+//        double deg = link.elevationAngle;
+//
+//        int index = int(AngleForLSP(deg)) / 10;
+//        std::cout << "\nUser " << ": index: " << index << ", angle: " << AngleForLSP(deg) << "\n";
+//        isLos = CalculateLOSProbability(index, scenario);
+//        link.isLOS = isLos;
+//        double d = CalculateDistance(EARTH_RADIUS, altitude, deg * PI / 180);
+//
+//        std::cout << "Distance: " << d;
+//
+//        double std = ChooseSTD(isLos, f, deg, scenario);
+//        //std::cout << "\nSTD for SF: " << std;
+//
+//        double SF = GenerateSF(std);
+//        //std::cout << "\nSF: " << SF;
+//
+//        double FSPL = Calculate_FSPL(d, f);
+//        //std::cout << "\nFSPL: " << FSPL;
+//
+//        double CL = ChooseCL(isLos, f, deg, scenario);
+//        //std::cout << "\nCL: " << CL;
+//
+//        double PL_b = CalculateBasisPathLoss(FSPL, SF, CL);
+//        std::cout << "\nPL_b: " << PL_b << std::endl;
+//
+//        setlocale(LC_ALL, "RU");
+//
+//        /*double PL_g = CalculatePathLossInGasses(d, f);
+//        std::cout << "PL_g: " << PL_g  << std::endl;
+//        std::cout << "PL = PL_b + PL_g = " << PL_b + PL_g << std::endl;*/
+//
+//        MatrixXd Table = isLos ? TableLOS : TableNLOS;
+//        VectorXd Parameters{ Table.rows() };
+//        Parameters = Table.col(index - 1);
+//        // расстояние в линке 
+//
+//        LSP::initializeParameters(isLos, link, Parameters);
 //    }
+//
+//    std::cin >> f;
+//
+//    return 0;
 //}
 //
-////Отдельно сценарий Rural
-//if (scenario == "Rural")
-//{
-//    if (los)
-//    {
-//        std::vector<std::string> NamesLOS = {
-//            // LSP
-//            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
-//            // Correlation coefficients
-//            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-//            // Other Parameters
-//            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
-//        Names = NamesLOS;
-//    }
-//    else
-//    {
-//        std::vector<std::string> NamesNLOS = {
-//            // LSP
-//            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
-//            // Correlation coefficients
-//            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-//            // Other Parameters
-//            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "" };
-//        Names = NamesNLOS;
-//    }
-//}
+//// Определение данных из таблиц в зависимости от углов для юзеров, округление к ближайшей колонке
 //
 //
-//for (int i = 0; i < Names.size(); ++i)
-//{
-//    std::cout << "\033[0m" << Names[i] << "\033[32m" << Parameters[i] << "\n";
-//}
-//
-//std::cout << "\033[0m";
+//////std::cout << "\n" << Table.rows() << " " << Table.cols();
+////std::cout << "\n" << Table << "\n";
+////std::vector<std::string> Names;
+////// Сценарии Dense_Urban/Urban/Suburban 
+////if (scenario != "Rural")
+////{
+////    if (los)
+////    {
+////        std::vector<std::string> NamesLOS = {
+////            // LSP
+////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
+////            // Correlation coefficients
+////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
+////            // Other Parameters
+////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
+////        Names = NamesLOS;
+////    }
+////
+////    else
+////    {
+////        std::vector<std::string> NamesNLOS = {
+////            // LSP
+////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
+////            // Correlation coefficients
+////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
+////            // Other Parameters
+////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "CL:      " };
+////        Names = NamesNLOS;
+////    }
+////}
+////
+//////Отдельно сценарий Rural
+////if (scenario == "Rural")
+////{
+////    if (los)
+////    {
+////        std::vector<std::string> NamesLOS = {
+////            // LSP
+////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
+////            // Correlation coefficients
+////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
+////            // Other Parameters
+////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
+////        Names = NamesLOS;
+////    }
+////    else
+////    {
+////        std::vector<std::string> NamesNLOS = {
+////            // LSP
+////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
+////            // Correlation coefficients
+////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
+////            // Other Parameters
+////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "" };
+////        Names = NamesNLOS;
+////    }
+////}
+////
+////
+////for (int i = 0; i < Names.size(); ++i)
+////{
+////    std::cout << "\033[0m" << Names[i] << "\033[32m" << Parameters[i] << "\n";
+////}
+////
+////std::cout << "\033[0m";

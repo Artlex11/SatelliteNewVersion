@@ -3,9 +3,10 @@
 
 #include <iostream>
 #include <cmath>
-#include "Generators.h"
 #include <Eigen/Dense>
 #include <string>
+
+#include "Generators.h"
 
 using namespace Eigen;
 
@@ -23,8 +24,10 @@ extern Vector<double, 9> angles;
 //
 //double angles[] = {10, 20, 30, 40, 50, 60, 70, 80, 90};
 
+// Расчёт угла для округления
 double AngleForLSP(double deg);
 
+// Расчёт вероятности прямого хода луча
 bool CalculateLOSProbability(int index, std::string scenario);
 
 #endif #pragma once

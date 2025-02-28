@@ -23,6 +23,6 @@ namespace RandomGenerators {
     // Генератор равномерного распределения из вектора для дробных чисел
     double generateUniformFromVector(const std::vector<double>& values);
 
-} // namespace RandomGenerators
+}
 
-#endif // GENERATORS_H
+#endif
