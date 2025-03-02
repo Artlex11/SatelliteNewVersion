@@ -3,7 +3,7 @@
 #include <vector>
 #include <chrono>
 
-#include "Satellite_link.h"
+#include "NTN_Deployment.h"
 #include "Tables.h"
 #include "Matlab_plot.h"
 #include "LOS_Probability.h"

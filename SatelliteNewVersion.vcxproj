@@ -137,10 +137,9 @@
     <ClCompile Include="Links.cpp" />
     <ClCompile Include="LOS_Probability.cpp" />
     <ClCompile Include="Matlab_plot.cpp" />
-    <ClCompile Include="NTN_Deployment.cpp" />
     <ClCompile Include="Pathloss.cpp" />
     <ClCompile Include="SatelliteNewVersion.cpp" />
-    <ClCompile Include="Satellite_link.cpp" />
+    <ClCompile Include="NTN_Deployment.cpp" />
     <ClCompile Include="Tables.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -149,9 +148,8 @@
     <ClInclude Include="Links.h" />
     <ClInclude Include="LOS_Probability.h" />
     <ClInclude Include="Matlab_plot.h" />
-    <ClInclude Include="NTN_Deployment.h" />
     <ClInclude Include="Pathloss.h" />
-    <ClInclude Include="Satellite_link.h" />
+    <ClInclude Include="NTN_Deployment.h" />
     <ClInclude Include="Tables.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
