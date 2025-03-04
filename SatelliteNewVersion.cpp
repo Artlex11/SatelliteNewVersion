@@ -334,7 +334,7 @@ int main() {
                         double deg = link.elevationAngle;
                         int index = int(AngleForLSP(deg)) / 10;
                         // bool isLos = false;
-                        bool isLos = false;// CalculateLOSProbability(index, scenarios[0]);
+                        bool isLos = CalculateLOSProbability(index, scenarios[0]);
 
                         MatrixXd Table = isLos ? TableLOS : TableNLOS;
                         VectorXd Parameters = Table.col(index - 1);
@@ -344,20 +344,20 @@ int main() {
                         {
                             SFDU.push_back(link.SF_db);
                             KDU.push_back(link.K_db);
-                            DSDU.push_back(link.DS_sec);
-                            ASDDU.push_back(link.ASD_deg);
-                            ASADU.push_back(link.ASA_deg);
-                            ZSDDU.push_back(link.ZSD_deg);
-                            ZSADU.push_back(link.ZSA_deg);
+                            DSDU.push_back(pow(10, link.DS_sec));
+                            ASDDU.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                            ASADU.push_back(pow(10, link.ASA_deg));
+                            ZSDDU.push_back(pow(10, link.ZSD_deg));
+                            ZSADU.push_back(pow(10, link.ZSA_deg));
                         }
                         else
                         {
                             SFDU.push_back(link.SF_db);
-                            DSDU.push_back(link.DS_sec);
-                            ASDDU.push_back(link.ASD_deg);
-                            ASADU.push_back(link.ASA_deg);
-                            ZSDDU.push_back(link.ZSD_deg);
-                            ZSADU.push_back(link.ZSA_deg);
+                            DSDU.push_back(pow(10, link.DS_sec));
+                            ASDDU.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                            ASADU.push_back(pow(10, link.ASA_deg));
+                            ZSDDU.push_back(pow(10, link.ZSD_deg));
+                            ZSADU.push_back(pow(10, link.ZSA_deg));
                         }
 
                     }
@@ -433,7 +433,7 @@ int main() {
                             double deg = link.elevationAngle;
                             int index = int(AngleForLSP(deg)) / 10;
                             //bool isLos = false;
-                            bool isLos = false; // CalculateLOSProbability(index, scenarios[1]);
+                            bool isLos = CalculateLOSProbability(index, scenarios[1]);
 
                             MatrixXd Table = isLos ? TableLOS : TableNLOS;
                             VectorXd Parameters = Table.col(index - 1);
@@ -443,20 +443,20 @@ int main() {
                             {
                                 SFU.push_back(link.SF_db);
                                 KU.push_back(link.K_db);
-                                DSU.push_back(link.DS_sec);
-                                ASDU.push_back(link.ASD_deg);
-                                ASAU.push_back(link.ASA_deg);
-                                ZSDU.push_back(link.ZSD_deg);
-                                ZSAU.push_back(link.ZSA_deg);
+                                DSU.push_back(pow(10, link.DS_sec));
+                                ASDU.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                                ASAU.push_back(pow(10, link.ASA_deg));
+                                ZSDU.push_back(pow(10, link.ZSD_deg));
+                                ZSAU.push_back(pow(10, link.ZSA_deg));
                             }
                             else
                             {
                                 SFU.push_back(link.SF_db);
-                                DSU.push_back(link.DS_sec);
-                                ASDU.push_back(link.ASD_deg);
-                                ASAU.push_back(link.ASA_deg);
-                                ZSDU.push_back(link.ZSD_deg);
-                                ZSAU.push_back(link.ZSA_deg);
+                                DSU.push_back(pow(10, link.DS_sec));
+                                ASDU.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                                ASAU.push_back(pow(10, link.ASA_deg));
+                                ZSDU.push_back(pow(10, link.ZSD_deg));
+                                ZSAU.push_back(pow(10, link.ZSA_deg));
                             }
 
                         }
@@ -534,7 +534,7 @@ int main() {
                             double deg = link.elevationAngle;
                             int index = int(AngleForLSP(deg)) / 10;
                             //bool isLos = false;
-                            bool isLos = false; // CalculateLOSProbability(index, scenarios[2]);
+                            bool isLos = CalculateLOSProbability(index, scenarios[2]);
 
                             MatrixXd Table = isLos ? TableLOS : TableNLOS;
                             VectorXd Parameters = Table.col(index - 1);
@@ -544,20 +544,20 @@ int main() {
                             {
                                 SFS.push_back(link.SF_db);
                                 KS.push_back(link.K_db);
-                                DSS.push_back(link.DS_sec);
-                                ASDS.push_back(link.ASD_deg);
-                                ASAS.push_back(link.ASA_deg);
-                                ZSDS.push_back(link.ZSD_deg);
-                                ZSAS.push_back(link.ZSA_deg);
+                                DSS.push_back(pow(10, link.DS_sec));
+                                ASDS.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                                ASAS.push_back(pow(10, link.ASA_deg));
+                                ZSDS.push_back(pow(10, link.ZSD_deg));
+                                ZSAS.push_back(pow(10, link.ZSA_deg));
                             }
                             else
                             {
                                 SFS.push_back(link.SF_db);
-                                DSS.push_back(link.DS_sec);
-                                ASDS.push_back(link.ASD_deg);
-                                ASAS.push_back(link.ASA_deg);
-                                ZSDS.push_back(link.ZSD_deg);
-                                ZSAS.push_back(link.ZSA_deg);
+                                DSS.push_back(pow(10, link.DS_sec));
+                                ASDS.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                                ASAS.push_back(pow(10, link.ASA_deg));
+                                ZSDS.push_back(pow(10, link.ZSD_deg));
+                                ZSAS.push_back(pow(10, link.ZSA_deg));
                             }
 
                         }
@@ -643,20 +643,20 @@ int main() {
                             {
                                 SFR.push_back(link.SF_db);
                                 KR.push_back(link.K_db);
-                                DSR.push_back(link.DS_sec);
-                                ASDR.push_back(link.ASD_deg);
-                                ASAR.push_back(link.ASA_deg);
-                                ZSDR.push_back(link.ZSD_deg);
-                                ZSAR.push_back(link.ZSA_deg);
+                                DSR.push_back(pow(10, link.DS_sec));
+                                ASDR.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg,log10(90))));
+                                ASAR.push_back(pow(10, link.ASA_deg));
+                                ZSDR.push_back(pow(10, link.ZSD_deg));
+                                ZSAR.push_back(pow(10, link.ZSA_deg));
                             }
                             else
                             {
                                 SFR.push_back(link.SF_db);
-                                DSR.push_back(link.DS_sec);
-                                ASDR.push_back(link.ASD_deg);
-                                ASAR.push_back(link.ASA_deg);
-                                ZSDR.push_back(link.ZSD_deg);
-                                ZSAR.push_back(link.ZSA_deg);
+                                DSR.push_back(pow(10, link.DS_sec));
+                                ASDR.push_back(M_PI / 180 * pow(10, std::min(link.ASD_deg, log10(90))));
+                                ASAR.push_back(pow(10, link.ASA_deg));
+                                ZSDR.push_back(pow(10, link.ZSD_deg));
+                                ZSAR.push_back(pow(10, link.ZSA_deg));
                             }
 
                         }

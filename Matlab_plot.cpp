@@ -259,7 +259,7 @@ void MatlabLSPPlot::plotForAllLSP(std::vector<double> SFDU, std::vector<double> 
     engEvalString(ep, "[f_ASD, x_ASD] = ecdf(ASDU); plot(x_ASD, f_ASD, 'DisplayName', scenarioU);");
     engEvalString(ep, "[f_ASD, x_ASD] = ecdf(ASDS); plot(x_ASD, f_ASD, 'DisplayName', scenarioS);");
     engEvalString(ep, "[f_ASD, x_ASD] = ecdf(ASDR); plot(x_ASD, f_ASD, 'DisplayName', scenarioR);");
-    engEvalString(ep, "xlabel('ASD, deg'); ylabel('CDF');");
+    engEvalString(ep, "xlabel('ASD, rad'); ylabel('CDF');");
     engEvalString(ep, "title(['CDF ASD for ', frequencyBand,'-band']);");
     engEvalString(ep, "legend show;");
 
@@ -285,7 +285,7 @@ void MatlabLSPPlot::plotForAllLSP(std::vector<double> SFDU, std::vector<double> 
     engEvalString(ep, "[f_ASA, x_ASA] = ecdf(ASAU); plot(x_ASA, f_ASA, 'DisplayName', scenarioU);");
     engEvalString(ep, "[f_ASA, x_ASA] = ecdf(ASAS); plot(x_ASA, f_ASA, 'DisplayName', scenarioS);");
     engEvalString(ep, "[f_ASA, x_ASA] = ecdf(ASAR); plot(x_ASA, f_ASA, 'DisplayName', scenarioR);");
-    engEvalString(ep, "xlabel('ASA, deg'); ylabel('CDF');");
+    engEvalString(ep, "xlabel('ASA, rad'); ylabel('CDF');");
     engEvalString(ep, "title(['CDF ASA for ', frequencyBand,'-band']);");
     engEvalString(ep, "legend show;");
 
@@ -311,7 +311,7 @@ void MatlabLSPPlot::plotForAllLSP(std::vector<double> SFDU, std::vector<double> 
     engEvalString(ep, "[f_ZSD, x_ZSD] = ecdf(ZSDU); plot(x_ZSD, f_ZSD, 'DisplayName', scenarioU);");
     engEvalString(ep, "[f_ZSD, x_ZSD] = ecdf(ZSDS); plot(x_ZSD, f_ZSD, 'DisplayName', scenarioS);");
     engEvalString(ep, "[f_ZSD, x_ZSD] = ecdf(ZSDR); plot(x_ZSD, f_ZSD, 'DisplayName', scenarioR);");
-    engEvalString(ep, "xlabel('ZSD, deg'); ylabel('CDF');");
+    engEvalString(ep, "xlabel('ZSD, rad'); ylabel('CDF');");
     engEvalString(ep, "title(['CDF ZSD for ', frequencyBand,'-band']);");
     engEvalString(ep, "legend show;");
 
@@ -338,7 +338,7 @@ void MatlabLSPPlot::plotForAllLSP(std::vector<double> SFDU, std::vector<double> 
     engEvalString(ep, "[f_ZSA, x_ZSA] = ecdf(ZSAU); plot(x_ZSA, f_ZSA, 'DisplayName', scenarioU);");
     engEvalString(ep, "[f_ZSA, x_ZSA] = ecdf(ZSAS); plot(x_ZSA, f_ZSA, 'DisplayName', scenarioS);");
     engEvalString(ep, "[f_ZSA, x_ZSA] = ecdf(ZSAR); plot(x_ZSA, f_ZSA, 'DisplayName', scenarioR);");
-    engEvalString(ep, "xlabel('ZSA, deg'); ylabel('CDF');");
+    engEvalString(ep, "xlabel('ZSA, rad'); ylabel('CDF');");
     engEvalString(ep, "title(['CDF ZSA for ', frequencyBand,'-band']);");
     engEvalString(ep, "legend show;");
 
