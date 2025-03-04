@@ -61,7 +61,6 @@ double CalculateDistance(const double EARTH_RADIUS, double altitude, double alph
 	return d;
 }
 
-
 double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 {
 	int deg = int(alpha / 10);
@@ -70,7 +69,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_LOS_S[deg];
 			}
@@ -89,7 +88,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_LOS_Ka[deg];
 			}
@@ -111,7 +110,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_NLOS_S[deg];
 			}
@@ -130,7 +129,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_NLOS_Ka[deg];
 			}
@@ -151,20 +150,17 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 	return std;
 }
 
-
 double GenerateSF(double std)
 {
 	double SF = RandomGenerators::generateGauss(0, std);
 	return SF;
 }
 
-
 double Calculate_FSPL(double d, double f)
 {
 	double FSPL = 32.45 + 20 * log10(f) + 20 * log10(d);
 	return FSPL;
 }
-
 
 double ChooseCL(bool los, double f, double alpha, std::string scenario)
 {
@@ -217,7 +213,6 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 	}
 	return CL;
 }
-
 
 double CalculateBasisPathLoss(double FSPL, double SF, double CL)
 {

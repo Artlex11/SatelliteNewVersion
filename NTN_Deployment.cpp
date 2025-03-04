@@ -1,7 +1,5 @@
 #include "NTN_Deployment.h"
 
-
-
 SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, double satHeightKm, double elMinDegrees, double elTargetDegrees, double azTargetDegrees)
     : nTiersCore(nTiersCore), nTiresWrArnd(nTiresWrArnd), nUePerCell(nUePerCell), satHeightKm(satHeightKm), elMinDegrees(elMinDegrees), elTargetDegrees(elTargetDegrees), azTargetDegrees(azTargetDegrees) {
     nTiers = nTiersCore + nTiresWrArnd;
@@ -13,89 +11,103 @@ SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, d
     uvStep = std::sin(M_PI / 180 * (beamWidth_degrees * 0.865));
     uvBeamRadius = uvStep / std::sqrt(3);
 
-    xyzSat = Eigen::Vector3d(1.0, -0.05, 0.0);
-    /*xyzSat << RandomGenerators::generateGauss(0.0, 1.0) ,
-       RandomGenerators::generateGauss(0.0, 1.0),
-       RandomGenerators::generateGauss(0.0, 1.0);*/
+
+    //xyzSat = Eigen::Vector3d(1.0, 0.0, 0.0);
+    xyzSat << RandomGenerators::generateGauss(0.0, 1.0),
+        RandomGenerators::generateGauss(0.0, 1.0),
+        RandomGenerators::generateGauss(0.0, 1.0);
 
     xyzSat.normalize();
     xyzSatOnEarth = xyzSat;
-    xyzSat *= (rEarth + satHeightKm);
+    xyzSat = xyzSat * (rEarth + satHeightKm);
 }
+
 
 
 void SatelliteLink::generateLinks() {
     std::vector<Eigen::Vector3d> xyzUEs_all(nUEs);
+    xyzUEs_all.reserve(nUEs);
+
     int UEcnt = 0;
-
     generateUVPlane();
+    generateCoreUVPlane();
 
-    double phiMax = M_PI - (M_PI / 180.0 * (90.0 + elMinDegrees)) - std::asin(std::sin(M_PI / 180.0 * (90.0 + elMinDegrees)) * rEarth / (rEarth + satHeightKm));
-    double phiSat = M_PI - (M_PI / 180.0 * (90.0 + elTargetDegrees)) - std::asin(std::sin(M_PI / 180.0 * (90.0 + elTargetDegrees)) * rEarth / (rEarth + satHeightKm));
-    double thetaSat = M_PI - phiSat - (M_PI / 180.0 * (90.0 + elTargetDegrees));
-    double treshold = rEarth * std::cos(phiMax);
+    const double phiMax = M_PI - (M_PI / 180.0 * (90.0 + elMinDegrees)) - std::asin(std::sin(M_PI / 180.0 * (90.0 + elMinDegrees)) * rEarth / (rEarth + satHeightKm));
+    const double phiSat = M_PI - (M_PI / 180.0 * (90.0 + elTargetDegrees)) - std::asin(std::sin(M_PI / 180.0 * (90.0 + elTargetDegrees)) * rEarth / (rEarth + satHeightKm));
+    const double thetaSat = M_PI - phiSat - (M_PI / 180.0 * (90.0 + elTargetDegrees));
+    const double threshold = rEarth * std::cos(phiMax) * rEarth;
+    const double uvBeamRadiusSquared = uvBeamRadius * uvBeamRadius;
 
-    // Фиксируем направление второго вектора относительно глобальной оси Z
-    Eigen::Vector3d globalZ(0, 0, 1);
+    Eigen::Vector3d globalZ(0.0, 0.0, 1.0);
 
-    // Если спутник не коллинеарен с глобальной осью Z, используем её для построения p1
-    if (!xyzSat.isApprox(globalZ) && !xyzSat.isApprox(-globalZ)) {
-        p1 = xyzSat.cross(globalZ).normalized(); // Первый ортогональный вектор
+
+    if (!xyzSat.normalized().isApprox(globalZ) && !xyzSat.normalized().isApprox(-globalZ)) {
+        p1 = xyzSat.cross(globalZ).normalized();
     }
     else {
-        // Если спутник коллинеарен с осью Z, используем глобальную ось X
-        p1 = Eigen::Vector3d(1, 0, 0);
+        p1 = Eigen::Vector3d(0.0, -1.0, 0.0);
     }
     p2 = xyzSat.cross(p1).normalized();
 
-    Eigen::Vector3d rotationAxis = (std::cos(azTargetDegrees * M_PI / 180.0) * p1 + std::sin(azTargetDegrees * M_PI / 180.0) * p2).normalized();
+    Eigen::Matrix3d rotMatrix = Eigen::Matrix3d::Identity();
 
-
-    Eigen::Matrix3d rotMatrix = Eigen::AngleAxisd(thetaSat, rotationAxis).toRotationMatrix();
-
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<> d(0.0, 1.0);
-
+    if (thetaSat != 90.0) {
+        //const Eigen::Vector3d rotationAxis = (std::cos(azTargetDegrees * M_PI / 180.0) * p1 + std::sin(azTargetDegrees * M_PI / 180.0) * p2).normalized();
+        rotMatrix = Eigen::AngleAxisd(thetaSat, (std::cos(azTargetDegrees * M_PI / 180.0) * p1 + std::sin(azTargetDegrees * M_PI / 180.0) * p2).normalized()).toRotationMatrix();
+    }
 
 
     while (UEcnt < nUEs) {
-        std::vector<Eigen::Vector3d> xyzUEs = generateRandomPoints(nUEs * 10);
+        std::vector<Eigen::Vector3d> xyzUEs = generateRandomPoints(nUEs * 20);
 
 #pragma omp parallel for
         for (int i = 0; i < static_cast<int>(xyzUEs.size()); ++i) {
+            if (UEcnt >= nUEs) break; // Останавливаем, если набрали достаточно точек
+
             const auto& xyzUE = xyzUEs[i];
-            if (xyzUE.dot(xyzSatOnEarth * rEarth) / rEarth <= treshold) continue;
+            const auto& projection = xyzUE.dot(xyzSatOnEarth * rEarth);
+            if (projection > threshold) {
 
-            Eigen::Vector3d rSatUe = (xyzUE - xyzSat).normalized();
+                Eigen::Vector3d rSatUe = rotMatrix * ((xyzUE - xyzSat).normalized());
 
-            if (thetaSat != 0.0) {
-                rSatUe = rotMatrix * rSatUe;
-            }
-
-            Eigen::Vector2d uvUE(rSatUe.dot(p1), rSatUe.dot(p2)); // u - rSatUe.dot(p1) , v - rSatUe.dot(p2)
+                const double u = rSatUe.dot(p1);
+                const double v = rSatUe.dot(p2);
 
 
-            for (const auto& uvCell : uvSet) {
-                if ((uvUE - uvCell).squaredNorm() <= uvBeamRadius * uvBeamRadius) {
+                for (const auto& uvCell : uvSet) {
+                    const double du = u - uvCell.x();
+                    const double dv = v - uvCell.y();
+                    const double distanceSquared = du * du + dv * dv;
+
+                    if (distanceSquared <= uvBeamRadiusSquared) {
 #pragma omp critical
-                    {
-                        if (UEcnt < nUEs) {
-                            xyzUEs_all[UEcnt++] = xyzUE;
+                        {
+                            if (UEcnt < nUEs) {
+                                xyzUEs_all[UEcnt++] = xyzUE;
+                            }
                         }
+                        break; // Прерываем цикл по uvSet
                     }
-                    break;
                 }
             }
         }
     }
 
-    for (const auto& user : xyzUEs_all) {
-
-        links.addLink((LinkData{ user, xyzSat, SatelliteLink::calculateElevetionAngle(user,xyzSat), Antenna{}, Antenna{} }));
+#pragma omp parallel for
+    for (int i = 0; i < xyzUEs_all.size(); ++i) {
+        const auto& user = xyzUEs_all[i];
+#pragma omp critical
+        {
+            links.addLink({ user, xyzSat, std::asin((xyzSat - user).normalized().dot(user.normalized())) * 180 / M_PI });
+        }
     }
-
 }
+//for (const auto& user : xyzUEs_all) {
+
+//    links.addLink((LinkData{ user, xyzSat, std::asin((xyzSat - user).normalized().dot(user.normalized())) * 180 / M_PI })); // угол места std::asin((xyzSat - user).normalized().dot(user.normalized())) * 180 / M_PI
+//}
+
+
 
 void SatelliteLink::generateUVPlane() {
 #pragma omp parallel for
@@ -113,28 +125,108 @@ void SatelliteLink::generateUVPlane() {
     }
 }
 
-double SatelliteLink::calculateElevetionAngle(const Eigen::Vector3d& UE, const Eigen::Vector3d& Sat)
-{
 
-    return std::asin((Sat - UE).normalized().dot(UE.normalized())) * 180 / M_PI;
+void SatelliteLink::generateCoreUVPlane() {
+#pragma omp parallel for
+    for (int i = -nTiersCore; i <= nTiersCore; ++i) {
+        for (int j = -nTiersCore; j <= nTiersCore; ++j) {
+            double u = i * uvStep + j * (uvStep / 2);
+            double v = j * (std::sqrt(3) * uvStep / 2);
+            if (u <= (nTiersCore * uvStep - v / std::sqrt(3)) + 1e-10 && u >= (-nTiersCore * uvStep - v / std::sqrt(3)) - 1e-10) {
+#pragma omp critical
+                {
+                    uvSetCore.push_back(Eigen::Vector2d(u, v));
+                }
+            }
+        }
+    }
 }
+
+
+
+//////// Пока одни из лучших вариантов 
+//////void SatelliteLink::generateUVPlane() {
+//////    std::unordered_set<Eigen::Vector2d, Vector2dHash> localUVSet;
+//////
+//////#pragma omp parallel
+//////    {
+//////        std::unordered_set<Eigen::Vector2d, Vector2dHash> threadUVSet;
+//////
+//////#pragma omp for nowait
+//////        for (int i = -nTiers; i <= nTiers; ++i) {
+//////            for (int j = -nTiers; j <= nTiers; ++j) {
+//////                double u = i * uvStep + j * (uvStep / 2);
+//////                double v = j * (std::sqrt(3) * uvStep / 2);
+//////                if (u <= (nTiers * uvStep - v / std::sqrt(3)) + 1e-10 && u >= (-nTiers * uvStep - v / std::sqrt(3)) - 1e-10) {
+//////                    threadUVSet.insert(Eigen::Vector2d(u, v));
+//////                }
+//////            }
+//////        }
+//////
+//////#pragma omp critical
+//////        {
+//////            localUVSet.insert(threadUVSet.begin(), threadUVSet.end());
+//////        }
+//////    }
+//////
+//////    uvSet = std::move(localUVSet);
+//////}
+//////
+//////void SatelliteLink::generateCoreUVPlane() {
+//////    std::unordered_set<Eigen::Vector2d, Vector2dHash> localUVSetCore;
+//////
+//////#pragma omp parallel
+//////    {
+//////        std::unordered_set<Eigen::Vector2d, Vector2dHash> threadUVSet;
+//////
+//////#pragma omp for nowait
+//////        for (int i = -nTiersCore; i <= nTiersCore; ++i) {
+//////            for (int j = -nTiersCore; j <= nTiersCore; ++j) {
+//////                double u = i * uvStep + j * (uvStep / 2);
+//////                double v = j * (std::sqrt(3) * uvStep / 2);
+//////                if (u <= (nTiersCore * uvStep - v / std::sqrt(3)) + 1e-10 && u >= (-nTiersCore * uvStep - v / std::sqrt(3)) - 1e-10) {
+//////                    threadUVSet.insert(Eigen::Vector2d(u, v));
+//////                }
+//////            }
+//////        }
+//////
+//////#pragma omp critical
+//////        {
+//////            localUVSetCore.insert(threadUVSet.begin(), threadUVSet.end());
+//////        }
+//////    }
+//////
+//////    uvSetCore = std::move(localUVSetCore);
+//////}
+
+
+
+
 
 std::vector<Eigen::Vector3d> SatelliteLink::generateRandomPoints(int count) {
     std::vector<Eigen::Vector3d> points(count);
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::normal_distribution<> d(0.0, 1.0);
+    std::atomic<size_t> validPoints = 0;
 
-#pragma omp parallel for
-    for (int i = 0; i < count; ++i) { // Исправлено: int вместо size_t
-        points[i] = Eigen::Vector3d(d(gen), d(gen), d(gen)).normalized() * rEarth;
+#pragma omp parallel
+    {
+        std::random_device rd;
+        std::minstd_rand gen(rd());
+        std::normal_distribution<> d(0.0, 1.0);
+
+        while (validPoints < static_cast<size_t>(count)) {
+            Eigen::Vector3d point(d(gen), d(gen), d(gen));
+
+            if (point.dot(xyzSat) > 0) {
+                size_t idx = validPoints++;
+                if (idx < static_cast<size_t>(count)) {
+                    points[idx] = (point.normalized()) * rEarth;
+                }
+            }
+        }
     }
-
     return points;
 }
 
-
-//-------------------------Проба------------------------------------------------//
 
 std::vector<Eigen::Vector3d> SatelliteLink::getVectorsToCellCenters() {
     std::vector<Eigen::Vector3d> vectorsToCenters;
@@ -146,7 +238,7 @@ std::vector<Eigen::Vector3d> SatelliteLink::getVectorsToCellCenters() {
     for (const auto& uv : uvCenters) {
         // Преобразуем UV-координаты в трёхмерные координаты на поверхности Земли
         Eigen::Vector3d centerOnEarth = uvTo3D(uv);
-
+        std::cout << uv << " \n";
         // Вычисляем вектор от спутника до центра ячейки
         Eigen::Vector3d vectorToCenter = -centerOnEarth;
         vectorsToCenters.push_back(vectorToCenter.normalized()); // Нормализуем вектор
@@ -161,14 +253,51 @@ Eigen::Vector3d SatelliteLink::uvTo3D(const Eigen::Vector2d& uv) {
     double v = uv(1);
 
     // Используем базисные векторы p1 и p2, которые уже определены в generateLinks()
-    Eigen::Vector3d centerOnEarth = xyzSatOnEarth + u * p1 + v * p2;
+    Eigen::Vector3d centerOnEarth = (xyzSatOnEarth)+(u * p1) + (v * p2);
 
     // Нормализуем и умножаем на радиус Земли, чтобы точка лежала на поверхности
     centerOnEarth.normalize();
-    centerOnEarth *= rEarth;
+    //centerOnEarth *= rEarth;
 
     return centerOnEarth;
 }
+
+
+
+
+
+
+
+//std::vector<Eigen::Vector3d> SatelliteLink::getVectorsToCellCenters() {
+//    std::vector<Eigen::Vector3d> vectorsToCenters;
+//
+//    for (const auto& uv : uvSet) {
+//
+//        Eigen::Vector3d vectorToCenter =  -uvTo3D(uv);
+//        vectorsToCenters.push_back(vectorToCenter.normalized()); // Нормализуем вектор
+//    }
+//    return vectorsToCenters;
+//}
+//
+//Eigen::Vector3d SatelliteLink::uvTo3D(const Eigen::Vector2d& uv) {
+//    // Преобразуем UV-координаты в трёхмерные координаты на поверхности Земли
+//    double u = uv(0);
+//    double v = uv(1);
+//
+//    // Используем базисные векторы p1 и p2, которые уже определены в generateLinks()
+//    Eigen::Vector3d centerOnEarth = xyzSatOnEarth + u * p1 + v * p2;
+//
+//    // Нормализуем и умножаем на радиус Земли, чтобы точка лежала на поверхности
+//    centerOnEarth.normalize();
+//    centerOnEarth *= rEarth;
+//
+//    return centerOnEarth;
+//}
+
+
+
+
+
 
 
 //std::vector<Eigen::Vector3d> SatelliteLink::generateRandomPoints(int count) {

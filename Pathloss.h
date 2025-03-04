@@ -36,28 +36,22 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario);
 double CalculateBasisPathLoss(double FSPL, double SF, double CL);
 
 // Horizontal paths
-double CalculateLh(double r, double s, double f, double t);
+// double CalculateLh(double r, double s, double f, double t);
 
 // Correlation for elevation angle of the path 
-double CalculateLe(double elevation);
+// double CalculateLe(double elevation);
 
 // Mu_1 and Sigma_1
-Vector<double, 2> CalculateParametersForA(double Lh, double Le, double u, double v, double f);
+// Vector<double, 2> CalculateParametersForA(double Lh, double Le, double u, double v, double f);
 
 // Mu_2 and Sigma_2
-Vector<double, 2> CalculateParametersForB(double w, double x, double y, double z, double f);
+// Vector<double, 2> CalculateParametersForB(double w, double x, double y, double z, double f);
 
 // F(P)^(-1)
-double CalculateInverseCummulativeNormalDistribution(double P);
+// double CalculateInverseCummulativeNormalDistribution(double P);
 
 // Building entry loss
-double CalculateBuildingEntryLoss(double A, double B, double C);
+// double CalculateBuildingEntryLoss(double A, double B, double C);
 
 //double CalculatePathLossInGasses(double d, double f);
 #endif
-
-//double CalculateDistance(double Re, double h0, double alpha);
-//
-//double GenerateSF(double std);
-//
-//double CalculatePathLoss(double d, double f);

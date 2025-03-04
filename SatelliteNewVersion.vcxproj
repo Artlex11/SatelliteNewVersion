@@ -140,10 +140,12 @@
     <ClCompile Include="Pathloss.cpp" />
     <ClCompile Include="SatelliteNewVersion.cpp" />
     <ClCompile Include="NTN_Deployment.cpp" />
+    <ClCompile Include="LSP_Graphics.cpp" />
     <ClCompile Include="Tables.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generators.h" />
+    <ClInclude Include="LSP_Graphics.h" />
     <ClInclude Include="LargeScaleParameters.h" />
     <ClInclude Include="Links.h" />
     <ClInclude Include="LOS_Probability.h" />

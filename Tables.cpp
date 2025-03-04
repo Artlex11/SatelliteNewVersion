@@ -10,9 +10,9 @@ MatrixXd GenerateMatrix(bool los, double f, std::string scenario)
         // S-band
         if (f < 6.0)
         {
-            if (scenario == "Dense_Urban")
+            if (scenario == "DenseUrban")
             {
-                // Table 6.7.2-1a Dense_Urban (LOS) in S band
+                // Table 6.7.2-1a DenseUrban (LOS) in S band
                 MatrixXd Table
                 {
                     {-7.12, -7.28, -7.45, -7.73, -7.91, -8.14, -8.23, -8.28, -8.36}, // DS mu [lgDS = log10(DS/1s)]
@@ -256,7 +256,7 @@ MatrixXd GenerateMatrix(bool los, double f, std::string scenario)
         // Ka-band
         else if (f >= 6.0)
         {
-            if (scenario == "Dense_Urban")
+            if (scenario == "DenseUrban")
             {
                 // Table 6.7.2-1b 
                 MatrixXd Table
@@ -507,7 +507,7 @@ MatrixXd GenerateMatrix(bool los, double f, std::string scenario)
         // S-band
         if (f < 6.0)
         {
-            if (scenario == "Dense_Urban")
+            if (scenario == "DenseUrban")
             {
                 // Table 6.7.2-2a 
                 MatrixXd Table{
@@ -736,7 +736,7 @@ MatrixXd GenerateMatrix(bool los, double f, std::string scenario)
         // Ka-band
         else if (f >= 6.0)
         {
-            if (scenario == "Dense_Urban")
+            if (scenario == "DenseUrban")
             {
                 // Table 6.7.2-2b 
                 MatrixXd Table
