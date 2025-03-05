@@ -12,7 +12,7 @@
 #include <omp.h> 
 
 #include "Generators.h"
-#include "links.h"
+#include "Links.h"
 
 
 
@@ -41,14 +41,10 @@ public:
     void generateLinks();
     Links links;
 
-
-    // Можно использовать для ускорения , но пока мало даёт
-    //std::unordered_set<Eigen::Vector2d, Vector2dHash> uvSet; // Используем хэш-функцию
-    //std::unordered_set<Eigen::Vector2d, Vector2dHash> uvSetCore; // Используем хэш-функцию
-
     std::vector<Eigen::Vector2d> uvSet;
     std::vector<Eigen::Vector2d> uvSetCore;
 
+    Eigen::Matrix3d rotMatrix = Eigen::Matrix3d::Identity();
 
     Eigen::Vector3d p1, p2;
     std::vector<Eigen::Vector3d> getVectorsToCellCenters();

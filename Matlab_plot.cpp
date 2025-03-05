@@ -129,6 +129,48 @@ void MatlabPlot::plotEarth()
     engEvalString(ep, "legend show;");
 }
 
+void MatlabPlot::plotCDF(const std::vector<double>& DL_CNR_dB_vec, const std::vector<double>& DL_CIR_dB_vec, const std::vector<double>& DL_CINR_dB_vec, const std::string& scenario) {
+    // Проверка на пустые векторы
+    if (DL_CNR_dB_vec.empty() || DL_CIR_dB_vec.empty() || DL_CINR_dB_vec.empty()) {
+        std::cerr << "Error: One or more vectors are empty." << std::endl;
+        return;
+    }
+
+    // Передача данных CNR в MATLAB
+    mxArray* cnrArray = mxCreateDoubleMatrix(1, DL_CNR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cnrArray), DL_CNR_dB_vec.data(), DL_CNR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cnr", cnrArray);
+
+    // Передача данных CIR в MATLAB
+    mxArray* cirArray = mxCreateDoubleMatrix(1, DL_CIR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cirArray), DL_CIR_dB_vec.data(), DL_CIR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cir", cirArray);
+
+    // Передача данных CINR в MATLAB
+    mxArray* cinrArray = mxCreateDoubleMatrix(1, DL_CINR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cinrArray), DL_CINR_dB_vec.data(), DL_CINR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cinr", cinrArray);
+
+    // Передача сценария в MATLAB
+    mxArray* scenarioArray = mxCreateString(scenario.c_str());
+    engPutVariable(ep, "scenario", scenarioArray);
+
+    // Построение CDF в MATLAB
+    engEvalString(ep, "figure; hold on; grid on;");
+    engEvalString(ep, "[f_cnr, x_cnr] = ecdf(cnr); plot(x_cnr, f_cnr, 'DisplayName', 'CNR');");
+    engEvalString(ep, "[f_cir, x_cir] = ecdf(cir); plot(x_cir, f_cir, 'DisplayName', 'CIR');");
+    engEvalString(ep, "[f_cinr, x_cinr] = ecdf(cinr); plot(x_cinr, f_cinr, 'DisplayName', 'CINR');");
+    engEvalString(ep, "xlabel('SNR, дБ'); ylabel('CDF');");
+    engEvalString(ep, "title(['CDF для CNR, CIR и CINR (Сценарий: ', scenario, ')']);");
+    engEvalString(ep, "legend show;");
+
+    // Освобождение памяти
+    mxDestroyArray(cnrArray);
+    mxDestroyArray(cirArray);
+    mxDestroyArray(cinrArray);
+    mxDestroyArray(scenarioArray);
+}
+
 // LSP Graphics
 
 MatlabLSPPlot::MatlabLSPPlot() {

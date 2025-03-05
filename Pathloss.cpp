@@ -1,18 +1,5 @@
 #include "PathLoss.h"
 
-// PL = PL_b + PL_g + PL_s + PL_e
-// PL = PL_b + PL_g
-// PL_b = FSPL + SF + CL(alpha, f)
-
-
-// Re - радиус Земли
-// h0 - высота спутника
-// alpha - elevation angle
-
-// SF_std
-
-// LOS
-
 // S-band
 Vector<double, 9> SF_std_Dense_Urban_LOS_S = { 3.5, 3.4, 2.9, 3.0, 3.1, 2.7, 2.5, 2.3, 1.2 };
 Vector<double, 9> SF_std_Urban_LOS_S = { 4, 4, 4, 4, 4, 4, 4, 4, 4 };
@@ -174,7 +161,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				CL = CL_Dense_Urban_S[deg];
 			}
@@ -193,7 +180,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				CL = CL_Dense_Urban_Ka[deg];
 			}
@@ -216,7 +203,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 
 double CalculateBasisPathLoss(double FSPL, double SF, double CL)
 {
-	double PL_b = FSPL + SF + CL;
+	double PL_b = FSPL;// +SF + CL;
 	return PL_b;
 }
 

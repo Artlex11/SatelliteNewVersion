@@ -132,6 +132,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Budget.cpp" />
     <ClCompile Include="Generators.cpp" />
     <ClCompile Include="LargeScaleParameters.cpp" />
     <ClCompile Include="Links.cpp" />
@@ -141,9 +142,11 @@
     <ClCompile Include="SatelliteNewVersion.cpp" />
     <ClCompile Include="NTN_Deployment.cpp" />
     <ClCompile Include="LSP_Graphics.cpp" />
+    <ClCompile Include="SSP.cpp" />
     <ClCompile Include="Tables.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Budget.h" />
     <ClInclude Include="Generators.h" />
     <ClInclude Include="LSP_Graphics.h" />
     <ClInclude Include="LargeScaleParameters.h" />
@@ -152,6 +155,7 @@
     <ClInclude Include="Matlab_plot.h" />
     <ClInclude Include="Pathloss.h" />
     <ClInclude Include="NTN_Deployment.h" />
+    <ClInclude Include="SSP.h" />
     <ClInclude Include="Tables.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
