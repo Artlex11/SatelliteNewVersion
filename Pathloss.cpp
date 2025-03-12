@@ -151,7 +151,7 @@ double Calculate_FSPL(double d, double f)
 
 double ChooseCL(bool los, double f, double alpha, std::string scenario)
 {
-	int deg = int(alpha / 10);
+	int deg = int(alpha / 10) - 1;
 	double CL;
 	if (los)
 	{

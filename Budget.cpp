@@ -1,4 +1,4 @@
-#include "Budget.h"
+#include "LinkBudget.h"
 #include <cmath>
 
 LinkBudget::LinkBudget(double bandwidth_MHz, double noiseFigure_dB, double temperature_K)

@@ -31,6 +31,11 @@ struct LinkData {
     std::vector<double> clusterDelays;
     std::vector<double> clusterScaledDelays; // только для прямой видимости , но не используется в вычислениях 
 
+    Eigen::MatrixXd AOD_n_m;
+    Eigen::MatrixXd AOA_n_m;
+    Eigen::MatrixXd ZOD_n_m;
+    Eigen::MatrixXd ZOA_n_m;
+    Eigen::MatrixXd XPR_n_m;
 
 
 };

@@ -77,8 +77,8 @@ void LSP::initializeLosParameters(LinkData& link, VectorXd& Parameters) {
     link.DS_sec = value[2];
     link.ASD_deg = value[3];
     link.ASA_deg = value[4];
-    link.ZSA_deg = value[5];
-    link.ZSD_deg = value[6];
+    link.ZSD_deg = value[5];
+    link.ZSA_deg = value[6];
 
 
 }
@@ -150,20 +150,17 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
     link.DS_sec = value[1];
     link.ASD_deg = value[2];
     link.ASA_deg = value[3];
-    link.ZSA_deg = value[4];
-    link.ZSD_deg = value[5];
+    link.ZSD_deg = value[4];
+    link.ZSA_deg = value[5];
 
     /* double StandardDeviationSF, StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSA, StandardDeviationZSD;
      double MeanSF, MeanDS, MeanASD, MeanASA, MeanZSA, MeanZSD;
      double ASDvsDS, ASAvsDS, ASAvsSF, ASDvsSF, DSvsSF, ASDvsASA, ZSDvsSF, ZSAvsSF, ZSDvsDS,
          ZSAvsDS, ZSDvsASD, ZSAvsASD, ZSDvsASA, ZSAvsASA, ZSDvsZSA;
 
-
-
      Eigen::VectorXd value(6);
      Eigen::VectorXd means(6);
      Eigen::MatrixXd C(6, 6);
-
 
      means << MeanSF, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
 

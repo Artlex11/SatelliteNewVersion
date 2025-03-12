@@ -45,7 +45,7 @@
     <ClCompile Include="LSP_Graphics.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="SSP.cpp">
+    <ClCompile Include="SmallScaleParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Budget.cpp">
@@ -80,10 +80,10 @@
     <ClInclude Include="LSP_Graphics.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="SSP.h">
+    <ClInclude Include="SmallScaleParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Budget.h">
+    <ClInclude Include="LinkBudget.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
