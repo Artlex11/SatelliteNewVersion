@@ -2,17 +2,47 @@
 #include <Eigen/Dense>
 #include <vector>
 #include <chrono>
+#include <engine.h>
+#include <fstream>
 
-#include "Satellite_link.h"
+#include "NTN_Deployment.h"
 #include "Tables.h"
-#include "Matlab_plot.h"
 #include "LOS_Probability.h"
-#include "LargeScaleParameters.h"
 #include "Pathloss.h"
+#include "LargeScaleParameters.h"
+#include "SmallScaleParameters.h"
+#include "LinkBudget.h"
+#include "Matlab_plot.h"
+
+
+void plotCDF(const std::vector<double>& data, const std::string& parameterName, const std::string& scenario, Engine* ep, int figureNumber) {
+    // Передача данных в MATLAB
+    mxArray* mxData = mxCreateDoubleMatrix(1, data.size(), mxREAL);
+    std::memcpy(mxGetPr(mxData), data.data(), data.size() * sizeof(double));
+    engPutVariable(ep, "data", mxData);
+
+    // Создание новой фигуры для каждого параметра
+    std::string command =
+        "figure(" + std::to_string(figureNumber) + "); "
+        "[f, x] = ecdf(data); "
+        "plot(x, f, 'DisplayName', '" + scenario + "'); "
+        "title('CDF of " + parameterName + "'); "
+        "xlabel('" + parameterName + "'); "
+        "ylabel('CDF'); "
+        "grid on; "
+        "hold on; "  // Включаем режим добавления графиков
+        "legend show;";
+
+    engEvalString(ep, command.c_str());
+
+    // Освобождение памяти
+    mxDestroyArray(mxData);
+}
 
 
 // Функция для вычисления диаграммы направленности
 void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) {
+    double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
     for (int i = 0; i < teta_rad.size(); ++i) {
         double teta = teta_rad(i);
         if (teta == 0) {
@@ -22,42 +52,98 @@ void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, dou
             double bessel_arg = 2 * M_PI * rDish_WL * sin(teta);
             double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
             double res = 4 * std::pow(bessel_val / bessel_arg, 2);
-            double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
             AP_dB(i) = 10 * log10(res) + Gain;
-
         }
     }
 }
 
+// Функция для поиска индексов совпадающих элементов
+std::vector<int> findMatchingIndices(const std::vector<Eigen::Vector2d>& uvSet, const std::vector<Eigen::Vector2d>& uvSetCore) {
+    std::vector<int> matchingIndices;
+    std::unordered_set<Eigen::Vector2d, Vector2dHash> coreSet(uvSetCore.begin(), uvSetCore.end());
+    for (int i = 0; i < uvSet.size(); ++i) {
+        if (coreSet.find(uvSet[i]) != coreSet.end()) {
+            matchingIndices.push_back(i);
+        }
+    }
+    return matchingIndices;
+}
+
+// Функция для маски (фильтра)
+std::vector<double> filterVector(const std::vector<double>& inputVector, const std::vector<int>& mask) {
+    std::vector<double> filteredVector;
+    if (inputVector.size() != mask.size()) {
+        std::cerr << "Error: inputVector and mask have different sizes!" << std::endl;
+        return filteredVector;
+    }
+    for (size_t i = 0; i < mask.size(); ++i) {
+        if (mask[i] == 1) {
+            filteredVector.push_back(inputVector[i]);
+        }
+    }
+    return filteredVector;
+}
+
+// Функция для фильтрации строк матрицы
+MatrixXd filterMatrixRows(const MatrixXd& inputMatrix, const std::vector<int>& mask) {
+    if (mask.size() != inputMatrix.rows()) {
+        std::cerr << "Error: Mask size does not match the number of rows in the matrix!" << std::endl;
+        return MatrixXd();
+    }
+    int numRowsToKeep = 0;
+    for (int value : mask) {
+        if (value == 1) {
+            numRowsToKeep++;
+        }
+    }
+    MatrixXd filteredMatrix(numRowsToKeep, inputMatrix.cols());
+    int filteredRowIndex = 0;
+    for (int i = 0; i < mask.size(); ++i) {
+        if (mask[i] == 1) {
+            filteredMatrix.row(filteredRowIndex) = inputMatrix.row(i);
+            filteredRowIndex++;
+        }
+    }
+    return filteredMatrix;
+}
+
 int main() {
-    MatlabPlot plotter;
-    plotter.plotEarth();
+    Engine* ep = engOpen("");
+    if (!ep) {
+        std::cerr << "MATLAB Engine no open" << std::endl;
+        return 1;
+    }
+    engSetVisible(ep, false);
 
-    while (true) {
+    int gear;
+    std::cout << "Chose gear: 0 - read file.txt and create Fig , 1 - Create model channel \n";
+    std::cin >> gear;
 
-        // Scenario options
-        std::vector<std::string> scenarios = { "Dense_Urban", "Urban", "Suburban", "Rural" };
+    MatrixXd TableLOS;
+    MatrixXd TableNLOS;
+
+    if (gear) {
+
+        std::vector<std::string> scenarios = { "DenseUrban", "Urban", "Suburban", "Rural" };
         std::vector<std::string> frequencyBands = { "S", "Ka" };
 
-        // Scenario selection
-        std::cout << "Select a scenario:\n";
-        for (size_t i = 0; i < scenarios.size(); ++i) {
-            std::cout << i + 1 << ". " << scenarios[i] << "\n";
-        }
-        std::cout << "Enter scenario number (1-" << scenarios.size() << ") or 0 to exit: ";
+        int nTiersCore = 2, nTiresWrArnd = 2, nUePerCell;
+        double satHeightKm = 600.0, elMinDegrees = 10.0, elTargetDegrees = 30.0, azTargetDegrees = 0.0;
 
-        int scenarioChoice;
-        std::cin >> scenarioChoice;
-
-        if (scenarioChoice == 0) {
-            break; // Exit the loop
-        }
-        else if (scenarioChoice < 1 || scenarioChoice > scenarios.size()) {
-            std::cout << "Invalid choice. Please try again.\n";
-            continue; // Repeat the loop
-        }
-
-        std::string scenario = scenarios[scenarioChoice - 1];
+        //std::cout << "Enter number of tiers in the core: ";
+        //std::cin >> nTiersCore;
+        //std::cout << "Enter number of tiers in the wrap-around: ";
+        //std::cin >> nTiresWrArnd;
+        std::cout << "Enter number of users per cell: ";
+        std::cin >> nUePerCell;
+        //std::cout << "Enter satellite height in kilometers: ";
+        //std::cin >> satHeightKm;
+        //std::cout << "Enter minimum elevation angle in degrees: ";
+        //std::cin >> elMinDegrees;
+        //std::cout << "Enter target elevation angle in degrees (90 - nadir): ";
+        //std::cin >> elTargetDegrees;
+        //std::cout << "Enter target azimuth angle in degrees: ";
+        //std::cin >> azTargetDegrees;
 
         // Frequency band selection
         std::cout << "Select a frequency band:\n";
@@ -65,344 +151,344 @@ int main() {
             std::cout << i + 1 << ". " << frequencyBands[i] << " band\n";
         }
         std::cout << "Enter frequency band number (1-" << frequencyBands.size() << "): ";
-
         int frequencyChoice;
         std::cin >> frequencyChoice;
-
         if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) {
             std::cout << "Invalid choice. Please try again.\n";
-            continue; // Repeat the loop
+            return 1;
         }
+        double f = (frequencyChoice == 1) ? 2.0 : 20.0;
 
-        double f = (frequencyChoice == 1) ? 2.0 : 30.0; // Example: 2 GHz for S and 30 GHz for Ka
+        for (size_t i = 0; i < scenarios.size(); ++i) {
+            const auto& scenario = scenarios[i];
 
+            auto start = std::chrono::high_resolution_clock::now();
 
-        double elTargetDegrees;
-        std::cout << "Enter elTargetDegrees  [grad]  (90 - nadir) : ";
-        std::cin >> elTargetDegrees;
-        double azTargetDegrees;
-        std::cout << "Enter azTargetDegrees  [grad]   : ";
-        std::cin >> azTargetDegrees;
+            SatelliteLink UEswithSat(nTiersCore, nTiresWrArnd, nUePerCell, satHeightKm, elMinDegrees, elTargetDegrees, azTargetDegrees);
+            UEswithSat.generateLinks();
 
-        double altitude = 600.0;
-
-        auto start = std::chrono::high_resolution_clock::now();
-        SatelliteLink UEswithSat(2, 0, 10, altitude, 10.0, elTargetDegrees, azTargetDegrees);
-        UEswithSat.generateLinks();
-
-        auto end = std::chrono::high_resolution_clock::now();
-        std::chrono::duration<double> elapsed = end - start;
-        std::cout << "Elapsed time: " << elapsed.count() << " s\n";
-
-        // генератор для шума
-        std::random_device rd;  // Источник энтропии
-        std::mt19937 gen(rd()); // Генератор случайных чисел (Mersenne Twister)
-        std::normal_distribution<> dist(0, 0.72); // Нормальное распределение с mean=0 и stddev=0.72
-
-        // параметры для CINR, CNR, CIR
-        double BW_MHz = 30;
-        double Ptx_dBW = 4 + 10 * log10(BW_MHz);
-        double NF_dB = 7;
-        double k_dBWHz = -228.6;
-        double T = 290;
-
-        double Pn_dBW = k_dBWHz + 10 * log10(T) + 10 * log10(BW_MHz * 1e6) + NF_dB;   
-        double Pn_lin = pow(10, (Pn_dBW / 10));
-
-        std::vector<Eigen::Vector3d> users;
-        for (const auto& link : UEswithSat.links.getLinks()) {
-            users.push_back(link.userPosition);
-        }
+            //std::vector<Eigen::Vector3d> users;
+            //for (const auto& link : UEswithSat.links.getLinks()) {
+            //    users.push_back(link.userPosition);
+            //}
+            //MatlabPlot::plotEarth(ep);
+            //MatlabPlot::plotTransformedData( ep ,users, UEswithSat.links.getLinks()[0].satellitePosition);
 
 
-        plotter.plotTransformedData(users, UEswithSat.links.getLinks()[0].satellitePosition);
-        //plotter.plotEarth();
-
-        // Generate tables for LOS and NLOS
-        MatrixXd TableLOS = GenerateMatrix(true, f, scenario);
-        MatrixXd TableNLOS = GenerateMatrix(false, f, scenario);
-
-        std::vector<Eigen::Vector3d> rRays = UEswithSat.getVectorsToCellCenters();
-
-        MatrixXd AP_lin(UEswithSat.links.getLinks().size(), rRays.size());
-        double rDish_WL = 2e9 / 299792458;
-        int countLink = 0;
-
-        for (auto& link : UEswithSat.links.getLinks()) {
-            double deg = link.elevationAngle;
-            int index = int(AngleForLSP(deg)) / 10;
-            bool isLos = CalculateLOSProbability(index, scenario);
-
-            MatrixXd Table = true ? TableLOS : TableNLOS;
-            VectorXd Parameters = Table.col(index - 1);
-            LSP::initializeParameters(isLos, link, Parameters);
 
 
-            for (int i = 0; i < static_cast<int> (rRays.size()); ++i) {
+            std::vector<Eigen::Vector3d> rRays = UEswithSat.getVectorsToCellCenters();
+            MatrixXd arrPatt_magn(UEswithSat.links.getLinks().size(), rRays.size());
+            std::vector<double> arrPatt;
+            std::vector<double> PL_lin_magn;
 
-                double theta = std::acos(rRays[i].dot((link.userPosition - link.satellitePosition).normalized()));
+            double rDish_WL = 2e9 / 299792458;
+            int countLink = 0;
+
+            std::vector<int> indRayCorelist = findMatchingIndices(UEswithSat.uvSet, UEswithSat.uvSetCore);
+            std::vector<int> RayUElist;
+            std::vector<int> coreUElist;
+
+            Eigen::Matrix3d rotMatrix = UEswithSat.rotMatrix;
+            std::vector<double> SF_db_values, K_db_values, DS_sec_values, ASA_deg_values, ASD_deg_values, ZSA_deg_values, ZSD_deg_values, ClusterDelay_sec_values, ClusterPower_lin_values;
+            std::vector<double> AOD_values, AOA_values, ZOD_values, ZOA_values;
+
+            TableLOS = GenerateMatrix(true, f, scenario);
+            TableNLOS = GenerateMatrix(false, f, scenario);
+
+            for (auto& link : UEswithSat.links.getLinks()) {
+
+                int index = int(AngleForLSP(link.elevationAngle)) / 10;
+                link.isLos = CalculateLOSProbability(index, scenario);
+
+                MatrixXd Table = link.isLos ? TableLOS : TableNLOS;
+                //VectorXd Parameters = Table.col(index - 1);
+                VectorXd Parameters = InterpolatedParameters(Table, link.elevationAngle);
+
+                LSP::initializeParameters(link.isLos, link, Parameters);
+
+                SSP::setParameters(Parameters);
+                SSP::calculateLosAngles(link, UEswithSat.p1, UEswithSat.p2);
+                SSP::generateClusterDelays(link);
+                std::pair<std::vector<double>, std::vector<double>> clusterPower = SSP::generateClusterPowers(link);
 
 
-                if (theta == 0) {
-                    AP_lin(countLink, i) = pow(10.0, 1.0 / 20.0);
-                }
-                else {
-                    double bessel_arg = 2 * M_PI * rDish_WL * sin(theta);
-                    double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
-                    double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+                //std::cout << "Power before:\n";
+                //for (double val : clusterPower.first) {
+                //    std::cout << val << " ";
+                //}
+                //std::cout << "\n";
+
+                SSP::generateArrivalAndDepartureAngles(link, clusterPower.second);
+                SSP::generateXPR(link);
+                SSP::sortRelativeToFirstVector(clusterPower.first, link.clusterDelays, link.AOA_n_m, link.AOD_n_m, link.ZOA_n_m, link.ZOD_n_m, link.XPR_n_m);
+
+
+
+                //std::cout << "Power after:\n";
+                //for (double val : clusterPower.first) {
+                //    std::cout << val << " ";
+                //}
+                //std::cout << "\n";
+
+
+
+                double d = CalculateDistance(EARTH_RADIUS, satHeightKm, link.elevationAngle * PI / 180);
+                double std = ChooseSTD(link.isLos, f, link.elevationAngle, scenario);
+                double SF = GenerateSF(std);
+                double FSPL = Calculate_FSPL(d * 1e3, f);
+                double CL = ChooseCL(link.isLos, f, link.elevationAngle, scenario);
+                double PL_dB = CalculateBasisPathLoss(FSPL, SF, CL);
+
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::normal_distribution<> dist(0, 0.72);
+                PL_dB = PL_dB + dist(gen);
+
+                double PL_lin_magnitude = pow(10, -1 * PL_dB / 20);
+
+                for (int i = 0; i < static_cast<int>(rRays.size()); ++i) {
+                    Eigen::Vector3d rotatedVector = rotMatrix * (link.userPosition - link.satellitePosition).normalized();
+                    double theta = std::acos(rRays[i].dot(rotatedVector));
                     double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
-                    AP_lin(countLink, i) = pow(10.0, (10 * log10(res) + Gain) / 20.0);
+
+                    if (theta == 0) {
+                        arrPatt_magn(countLink, i) = pow(10.0, (1.0 + Gain) / 20.0);
+                    }
+                    else {
+                        double bessel_arg = 2 * M_PI * rDish_WL * sin(theta);
+                        double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
+                        double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+                        arrPatt_magn(countLink, i) = pow(10.0, (10 * log10(res) + Gain) / 20.0);
+                    }
                 }
+
+                PL_lin_magn.push_back(PL_lin_magnitude);
+                arrPatt.push_back(arrPatt_magn.row(countLink).maxCoeff(&RayUElist.emplace_back()));
+
+
+
+                ClusterDelay_sec_values.insert(ClusterDelay_sec_values.end(), link.clusterScaledDelays.begin(), link.clusterScaledDelays.end());
+                //ClusterPower_lin_values.insert(ClusterPower_lin_values.end(), clusterPower.first.begin(), clusterPower.first.end());
+
+                for (const auto& value : clusterPower.first) {
+                    if (value != 0) {
+                        ClusterPower_lin_values.push_back(value);
+                    }
+                }
+
+                SF_db_values.push_back(link.SF_db + CL);
+                K_db_values.push_back(link.K_db);
+                DS_sec_values.push_back(link.DS_sec);
+                ASA_deg_values.push_back(link.ASA_deg);
+                ASD_deg_values.push_back(link.ASD_deg);
+                ZSA_deg_values.push_back(link.ZSA_deg);
+                ZSD_deg_values.push_back(link.ZSD_deg);
+
+                for (int n = 0; n < link.AOA_n_m.rows(); ++n) {
+                    if (!link.isLos && n != 0) {
+                        if (link.AOA_n_m(n, 0) != INFINITY || link.AOA_n_m(n, 0) != -INFINITY) {
+                            AOD_values.insert(AOD_values.end(), link.AOD_n_m.row(n).begin(), link.AOD_n_m.row(n).end());
+                            AOA_values.insert(AOA_values.end(), link.AOA_n_m.row(n).begin(), link.AOA_n_m.row(n).end());
+                            ZOD_values.insert(ZOD_values.end(), link.ZOD_n_m.row(n).begin(), link.ZOD_n_m.row(n).end());
+                            ZOA_values.insert(ZOA_values.end(), link.ZOA_n_m.row(n).begin(), link.ZOA_n_m.row(n).end());
+                        }
+                    }
+                }
+                countLink += 1;
+
             }
 
-            double d = CalculateDistance(EARTH_RADIUS, altitude, deg * PI / 180);
-            
-            std::cout << "Distance: " << d;
 
-            double std = ChooseSTD(isLos, f, deg, scenario);
-            //std::cout << "\nSTD for SF: " << std;
+            //plotCDF(SF_db_values, "SF, db", scenario, ep, 1);
+            //plotCDF(K_db_values, "K, db", scenario, ep, 2);
+            //plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3);
+            //plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4);
+            //plotCDF(ASD_deg_values, "ASD, deg", scenario, ep, 5);
+            //plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6);
+            //plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7);
+            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8);
+            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9);
 
-            double SF = GenerateSF(std);
-            //std::cout << "\nSF: " << SF;
+            plotCDF(AOD_values, "AOD_values, degree", scenario, ep, 10);
+            plotCDF(AOA_values, "AOA_values, degree", scenario, ep, 11);
+            plotCDF(ZOD_values, "ZOD_values, degree", scenario, ep, 12);
+            plotCDF(ZOA_values, "ZOA_values, degree", scenario, ep, 13);
 
-            double FSPL = Calculate_FSPL(d, f);
-            //std::cout << "\nFSPL: " << FSPL;
 
-            double CL = ChooseCL(isLos, f, deg, scenario);
-            //std::cout << "\nCL: " << CL;
 
-            double PL_b = CalculateBasisPathLoss(FSPL, SF, CL);
-            std::cout << "\nPL_b: " << PL_b << std::endl;
-            
-            double PL_dB = PL_b + dist(gen);
-
-            // Перевод в линейный масштаб
-            double PL_lin_magnitude = pow(10, -1 * PL_dB / 20);
-
-            double maxVal = AP_lin.row(countLink).maxCoeff(); // Максимальное значение в строке
-            int maxColIndex;
-            AP_lin.row(countLink).maxCoeff(&maxColIndex); // Индекс максимального значения
-
-            double attSignal_magn = PL_lin_magnitude * maxVal;
-
-            double attInterference_magn = sqrt(pow(PL_lin_magnitude * maxVal, 2) - attSignal_magn * attSignal_magn);
-
-            /*double Prx_lin = pow(10, (Ptx_dBW / 10)) * attSignal_magn * attSignal_magn;         
-            double Prx_dBW = 10 * log10(Prx_lin);
-
-            double Pint_lin = pow(10, (Ptx_dBW / 10)) * attInterference_magn * attSignal_magn;  
-            double Pint_dBW = 10 * log10(Pint_lin);*/
-
-            /*double DL_CNR_dB = Prx_dBW - Pn_dBW;
-            double DL_CIR_dB = Prx_dBW - Pint_dBW;
-            double DL_CINR_dB = Prx_dBW - 10 * log10(Pn_lin + Pint_lin);*/
-
-            double Prx_dBM = 4 + 10 * log10(BW_MHz);
-            double Prd_dBM = k_dBWHz + 10 * log10(290) + 10 * log10(BW_MHz * 160) + NF_dB;
-            double Prx_in = pow(10, Prx_dBM / 10) * attSignal_magn * attSignal_magn;
-            double Pint_in = pow(10, Prx_dBM / 10) * attInterference_magn * attInterference_magn;
-            double DL_CNR_dB = Prx_dBM - Prd_dBM;
-            double DL_CIR_dB = Prx_dBM - 10 * log10(Pint_in);
-            double DL_CINR_dB = Prx_dBM - 10 * log10(Prx_in + Pint_in);
-
-            std::cout << "Link #" << countLink + 1 << ": Max AP_lin = " << maxVal << ", Ray #" << maxColIndex + 1 << std::endl;
-            std::cout << "CNR, CIR, CINR: " << DL_CNR_dB << ", " << DL_CIR_dB << ", " << DL_CINR_dB << std::endl;
-
-            countLink += 1;
-        }
-        
-
-        for (int i = 0; i < AP_lin.rows(); ++i) {
-            for (int j = 0; j < AP_lin.cols(); ++j) {
-                std::cout << AP_lin(i, j) << " "; // Выводим элемент
+            for (int rayIndex : RayUElist) {
+                bool found = false;
+                for (int coreIndex : indRayCorelist) {
+                    if (coreIndex == rayIndex) {
+                        found = true;
+                        break;
+                    }
+                }
+                coreUElist.push_back(found ? 1 : 0);
             }
-            std::cout << std::endl; // Переход на новую строку после вывода строки
+
+            std::vector<double> coreArrPatt = filterVector(arrPatt, coreUElist);
+            std::vector<double> maxPL_lin_magn = filterVector(PL_lin_magn, coreUElist);
+            MatrixXd allArrPatt_magn = filterMatrixRows(arrPatt_magn, coreUElist);
+
+            LinkBudget linkBudget(30, 7, 290);
+            linkBudget.calculateMetrics(coreArrPatt, maxPL_lin_magn, allArrPatt_magn);
+
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            std::cout << "Elapsed time for scenario " << scenario << ": " << elapsed.count() << " s\n";
         }
 
+        int userInput = 1;
+        while (userInput) {
+            std::cout << "Enter 0 to close all figures : ";
+            std::cin >> userInput;
 
-
-        for (size_t i = 0; i < rRays.size(); ++i) {
-            std::cout << "Vector " << i +1 << ": "
-                << rRays[i].transpose() << std::endl;
+            if (userInput == 0) {
+                // Close all figures in MATLAB
+                engEvalString(ep, "close all;");
+                engClose(ep);
+                std::cout << "All figures closed." << std::endl;
+            }
         }
-        
-
-        //plotter.plotRayPoints(UEswithSat.links.getLinks()[0].satellitePosition, rRays);
-
-
-        // Вычисление диаграммы направленности
-        //calculateDishPattern(elTargetDegrees, AP_dB, rDish_WL);
-
-
+        engClose(ep);
     }
+    else {
 
+        std::vector<std::string> scenarios = { "DenseUrban", "Urban", "Suburban", "Rural" };
+        std::vector<std::string> frequencyBands = { "S", "Ka" };
+
+
+        // Frequency band selection
+        std::cout << "Select a frequency band:\n";
+        for (size_t i = 0; i < frequencyBands.size(); ++i) {
+            std::cout << i + 1 << ". " << frequencyBands[i] << " band\n";
+        }
+        std::cout << "Enter frequency band number (1-" << frequencyBands.size() << "): ";
+        int frequencyChoice;
+        std::cin >> frequencyChoice;
+        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) {
+            std::cout << "Invalid choice. Please try again.\n";
+            return 1;
+        }
+        double f = (frequencyChoice == 1) ? 2.0 : 20.0;
+
+        std::ifstream file("setofangles.txt");  // Убедитесь, что путь к файлу правильный
+        if (!file.is_open()) {
+            std::cerr << "File no open!" << std::endl;
+            return 1;
+        }
+
+        std::vector<double> data;
+        double value;
+
+        while (file >> value) {
+            std::vector<double> row;
+            data.push_back(value);
+            while (file.peek() != '\n' && file >> value) {
+                data.push_back(value);
+            }
+        }
+
+        file.close();
+
+        for (size_t i = 0; i < scenarios.size(); ++i) {
+            const auto& scenario = scenarios[i];
+            auto start = std::chrono::high_resolution_clock::now();
+
+            std::vector<double> SF_db_values, K_db_values, DS_sec_values, ASA_deg_values, ASD_deg_values, ZSA_deg_values, ZSD_deg_values, ClusterDelay_sec_values, ClusterPower_lin_values;
+            std::vector<double> AOD_values, AOA_values, ZOD_values, ZOA_values;
+
+            TableLOS = GenerateMatrix(true, f, scenario);
+            TableNLOS = GenerateMatrix(false, f, scenario);
+
+            for (auto& angleEL : data) {
+                int index = (AngleForLSP(angleEL)) / 10;
+                LinkData link;
+                link.elevationAngle = angleEL;
+                link.isLos = CalculateLOSProbability(index, scenario);
+                MatrixXd Table = link.isLos ? TableLOS : TableNLOS;
+
+
+                //VectorXd Parameters = Table.col(index - 1);
+                VectorXd Parameters = InterpolatedParameters(Table, angleEL);
+
+                LSP::initializeParameters(link.isLos, link, Parameters);
+                double CL = ChooseCL(link.isLos, f, angleEL, scenario);
+
+                SSP::setParameters(Parameters);
+                SSP::generateClusterDelays(link);
+                std::pair<std::vector<double>, std::vector<double>> clusterPower = SSP::generateClusterPowers(link);
+
+                //std::vector<double>& Vector1 = clusterPower.first;
+                //std::cout << "clusterPowers:\n";
+                //for (size_t i = 0; i < Vector1.size(); ++i) {
+                //    std::cout << "# " << i << ": " << Vector1[i] << ",";
+                //}
+                //std::cout << std::endl;
+
+
+                ClusterDelay_sec_values.insert(ClusterDelay_sec_values.end(), link.clusterScaledDelays.begin(), link.clusterScaledDelays.end());
+                //ClusterPower_lin_values.insert(ClusterPower_lin_values.end(), clusterPower.first.begin(), clusterPower.first.end());
+
+                for (auto& value : clusterPower.first) {
+                    if (value != 0.0) {
+                        ClusterPower_lin_values.push_back(value);
+                    }
+                }
+
+                //std::vector<double>& Vector2 = ClusterPower_lin_values;
+                //std::cout << "ClusterPower_lin_values:\n";
+                //for (size_t i = 0; i < Vector2.size(); ++i) {
+                //    std::cout << "# " << i << ": " << Vector2[i] << ",";
+                //}
+                //std::cout << std::endl;
+
+                // Сбор данных для LSP параметров
+                SF_db_values.push_back(link.SF_db + CL);
+                K_db_values.push_back(link.K_db);
+                DS_sec_values.push_back(link.DS_sec);
+                ASA_deg_values.push_back(link.ASA_deg);
+                ASD_deg_values.push_back(link.ASD_deg);
+                ZSA_deg_values.push_back(link.ZSA_deg);
+                ZSD_deg_values.push_back(link.ZSD_deg);
+
+            }
+            plotCDF(SF_db_values, "SF, db", scenario, ep, 1);
+            engEvalString(ep, "xlim([-40 100])");
+            plotCDF(K_db_values, "K, db", scenario, ep, 2);
+            engEvalString(ep, "xlim([-50 100])");
+            plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3);
+            engEvalString(ep, "xlim([0 1e-6])");
+            plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4);
+            engEvalString(ep, "xlim([0 1000])");
+            plotCDF(ASD_deg_values, "ASD, deg", scenario, ep, 5);
+            engEvalString(ep, "xlim([0 1.6])");
+            plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6);
+            engEvalString(ep, "xlim([0 350])");
+            plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7);
+            engEvalString(ep, "xlim([0 100])");
+            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8);
+            engEvalString(ep, "xlim([0 1e-6])");
+            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9);
+
+            auto end = std::chrono::high_resolution_clock::now();
+            std::chrono::duration<double> elapsed = end - start;
+            std::cout << "Elapsed time for scenario " << scenario << ": " << elapsed.count() << " s\n";
+        }
+        int userInput = 1;
+        while (userInput) {
+            std::cout << "Enter 0 to close all figures : ";
+            std::cin >> userInput;
+
+            if (userInput == 0) {
+                // Close all figures in MATLAB
+                engEvalString(ep, "close all;");
+                engClose(ep);
+                std::cout << "All figures closed." << std::endl;
+            }
+        }
+    }
     return 0;
-
 }
-
-//#include <iostream>
-//#include <Eigen/Dense>
-//#include <vector>
-//#include <chrono>
-//
-//#include "NTN_Deployment.h"
-//#include "Tables.h"
-//#include "Matlab_plot.h"
-//#include "LOS_Probability.h"
-//#include "Pathloss.h"
-//#include "LargeScaleParameters.h"
-//
-//
-//
-//int main() 
-//{
-//    std::string scenario;
-//    double f;
-//    bool isLos;
-//    double altitude;
-//
-//    std::cout << "\nInput scenario (Dense_Urban/Urban/Suburban/Rural): ";
-//    std::cin >> scenario;
-//    std::cout << "\nInput frequency(f) in GHz: ";
-//    std::cin >> f;
-//    std::cout << "\nInput altitude in kilometers: ";
-//    std::cin >> altitude;
-//    auto start = std::chrono::high_resolution_clock::now();
-//
-//    SatelliteLink UEswithSat(2, 4, 10, altitude, 10, 30); // вместо чисел вставить переменные, потому что где-то надо их вызывать
-//    UEswithSat.generateLinks();
-//
-//    auto end = std::chrono::high_resolution_clock::now();
-//    std::chrono::duration<double> elapsed = end - start;
-//
-//    //std::cout << "Elapsed time: " << elapsed.count() << " s\n";
-//
-//    std::vector<Eigen::Vector3d> users;
-//    for (const auto& link : UEswithSat.links.getLinks()) {
-//        users.push_back(link.userPosition);
-//    }
-//
-//
-//    // Создание объекта для построения графиков
-//    MatlabPlot plotter;
-//
-//    // Построение графиков
-//    plotter.plotTransformedData(users, UEswithSat.links.getLinks()[0].satellitePosition);
-//    plotter.plotEarth();
-//
-//    MatrixXd TableLOS = GenerateMatrix(true, f, scenario);
-//    MatrixXd TableNLOS = GenerateMatrix(false, f, scenario);
-//
-//    for (auto& link : UEswithSat.links.getLinks()) {
-//        double deg = link.elevationAngle;
-//
-//        int index = int(AngleForLSP(deg)) / 10;
-//        std::cout << "\nUser " << ": index: " << index << ", angle: " << AngleForLSP(deg) << "\n";
-//        isLos = CalculateLOSProbability(index, scenario);
-//        link.isLOS = isLos;
-//        double d = CalculateDistance(EARTH_RADIUS, altitude, deg * PI / 180);
-//
-//        std::cout << "Distance: " << d;
-//
-//        double std = ChooseSTD(isLos, f, deg, scenario);
-//        //std::cout << "\nSTD for SF: " << std;
-//
-//        double SF = GenerateSF(std);
-//        //std::cout << "\nSF: " << SF;
-//
-//        double FSPL = Calculate_FSPL(d, f);
-//        //std::cout << "\nFSPL: " << FSPL;
-//
-//        double CL = ChooseCL(isLos, f, deg, scenario);
-//        //std::cout << "\nCL: " << CL;
-//
-//        double PL_b = CalculateBasisPathLoss(FSPL, SF, CL);
-//        std::cout << "\nPL_b: " << PL_b << std::endl;
-//
-//        setlocale(LC_ALL, "RU");
-//
-//        /*double PL_g = CalculatePathLossInGasses(d, f);
-//        std::cout << "PL_g: " << PL_g  << std::endl;
-//        std::cout << "PL = PL_b + PL_g = " << PL_b + PL_g << std::endl;*/
-//
-//        MatrixXd Table = isLos ? TableLOS : TableNLOS;
-//        VectorXd Parameters{ Table.rows() };
-//        Parameters = Table.col(index - 1);
-//        // расстояние в линке 
-//
-//        LSP::initializeParameters(isLos, link, Parameters);
-//    }
-//
-//    std::cin >> f;
-//
-//    return 0;
-//}
-//
-//// Определение данных из таблиц в зависимости от углов для юзеров, округление к ближайшей колонке
-//
-//
-//////std::cout << "\n" << Table.rows() << " " << Table.cols();
-////std::cout << "\n" << Table << "\n";
-////std::vector<std::string> Names;
-////// Сценарии Dense_Urban/Urban/Suburban 
-////if (scenario != "Rural")
-////{
-////    if (los)
-////    {
-////        std::vector<std::string> NamesLOS = {
-////            // LSP
-////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
-////            // Correlation coefficients
-////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-////            // Other Parameters
-////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
-////        Names = NamesLOS;
-////    }
-////
-////    else
-////    {
-////        std::vector<std::string> NamesNLOS = {
-////            // LSP
-////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
-////            // Correlation coefficients
-////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-////            // Other Parameters
-////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "DS:      ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "CL:      " };
-////        Names = NamesNLOS;
-////    }
-////}
-////
-//////Отдельно сценарий Rural
-////if (scenario == "Rural")
-////{
-////    if (los)
-////    {
-////        std::vector<std::string> NamesLOS = {
-////            // LSP
-////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ", "K_mu:    ", "K_sg:    ",
-////            // Correlation coefficients
-////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ASD_K:   ", "ASA_K:   ", "DS_K:    ", "SF_K:    ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_K:   ", "ZSA_K:   ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-////            // Other Parameters
-////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     " };
-////        Names = NamesLOS;
-////    }
-////    else
-////    {
-////        std::vector<std::string> NamesNLOS = {
-////            // LSP
-////            "DS_mu:   ", "DS_sg:   ", "ASD_mu:  ", "ASD_sg:  ", "ASA_mu:  ", "ASA_sg:  ", "ZSA_mu:  ", "ZSA_sg:  ", "ZSD_mu:  ", "ZSD_sg:  ", "SF_mu:   ", "SF_sg:   ",
-////            // Correlation coefficients
-////            "ASD_DS:  ", "ASA_DS:  ", "ASA_SF:  ", "ASD_SF:  ", "DS_SF:   ", "ASD_ASA: ", "ZSD_SF:  ", "ZSA_SF:  ", "ZSD_DS:  ", "ZSA_DS:  ", "ZSD_ASD: ", "ZSA_ASD: ", "ZSD_ASA: ", "ZSA_ASA: ", "ZSD_ZSA: ",
-////            // Other Parameters
-////            "r_tau:   ", "XPR_mu:  ", "XPR_sg:  ", "N:       ", "M:       ", "ASD:     ", "ASA:     ", "ZSA:     ", "ksi:     ", "" };
-////        Names = NamesNLOS;
-////    }
-////}
-////
-////
-////for (int i = 0; i < Names.size(); ++i)
-////{
-////    std::cout << "\033[0m" << Names[i] << "\033[32m" << Parameters[i] << "\n";
-////}
-////
-////std::cout << "\033[0m";

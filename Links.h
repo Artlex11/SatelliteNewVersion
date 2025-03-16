@@ -4,47 +4,54 @@
 #include <Eigen/Dense>
 #include <vector>
 
-// —труктура дл€ хранени€ данных антенны ( пока просто как затычка ) 
-struct Antenna {
-    double gain;               //  оэффициент усилени€ антенны
-};
 
 // —труктура дл€ хранени€ всех необходимых данных
 struct LinkData {
     Eigen::Vector3d userPosition;
     Eigen::Vector3d satellitePosition;
     double elevationAngle;
-    Antenna userAntenna;
-    Antenna satelliteAntenna;
+
+    bool isLos;
     double PL_db;
-    // distance and LOS_p возможно помен€ть местами
-    double distance;
-    bool isLOS;
-    double SF_db; 
+
+    //Large scale parameters:
+    double SF_db;
     double K_db;
     double DS_sec;
-    double ASA_deg;
-    double ASD_deg;
-    double ZSA_deg;
-    double ZSD_deg;
-    
+    double ASA_deg; // ASA в градусах
+    double ASD_deg; // ASD в градусах
+    double ZSA_deg; // ZSA в градусах
+    double ZSD_deg; // ZSD в градусах
+
+    //Small scale parameters:
+    double AoD_Los; // AoD в градусах
+    double AoA_Los; // AoA в градусах
+    double ZoD_Los; // ZoD в градусах
+    double ZoA_Los; // ZoA в градусах
+    std::vector<double> clusterDelays;
+    std::vector<double> clusterScaledDelays; // только дл€ пр€мой видимости , но не используетс€ в вычислени€х 
+
+    Eigen::MatrixXd AOD_n_m;
+    Eigen::MatrixXd AOA_n_m;
+    Eigen::MatrixXd ZOD_n_m;
+    Eigen::MatrixXd ZOA_n_m;
+    Eigen::MatrixXd XPR_n_m;
+
 
 };
 
 //  ласс дл€ работы с данными св€зей
 class Links {
-public:
-    // ƒобавление новой св€зи (передача по ссылке дл€ избежани€ копировани€)
-    void addLink(LinkData& link);
 
-    // ѕолучение всех св€зей (возврат по ссылке дл€ избежани€ копировани€)
+public:
+
     std::vector<LinkData>& getLinks();
 
     // ќптимизированна€ верси€: добавление с использованием перемещени€ (move semantics)
     void addLink(LinkData&& link);
 
-
-    std::vector<LinkData> links_vec;  // ¬ектор дл€ хранени€ всех св€зей
+private:
+    std::vector<LinkData> links;  // ¬ектор дл€ хранени€ всех св€зей
 };
 
 #endif // LINKS_H

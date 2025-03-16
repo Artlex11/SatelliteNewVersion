@@ -1,18 +1,18 @@
 #include "Matlab_plot.h"
 #include <iostream>
+//
+//MatlabPlot::MatlabPlot() {
+//    if (!(ep = engOpen(""))) {
+//        std::cerr << "MATLAB Engine no open" << std::endl;
+//        exit(1);
+//    }
+//}
+//
+//MatlabPlot::~MatlabPlot() {
+//    engClose(ep);
+//}
 
-MatlabPlot::MatlabPlot() {
-    if (!(ep = engOpen(""))) {
-        std::cerr << "Не удалось открыть MATLAB Engine" << std::endl;
-        exit(1);
-    }
-}
-
-MatlabPlot::~MatlabPlot() {
-    engClose(ep);
-}
-
-void MatlabPlot::plotTransformedData(const std::vector<Eigen::Vector3d>& users, const Eigen::Vector3d& satellite) {
+void MatlabPlot::plotTransformedData(Engine* ep, const std::vector<Eigen::Vector3d>& users, const Eigen::Vector3d& satellite) {
     // Передача данных пользователей в MATLAB
     mxArray* usersX = mxCreateDoubleMatrix(1, users.size(), mxREAL);
     mxArray* usersY = mxCreateDoubleMatrix(1, users.size(), mxREAL);
@@ -42,11 +42,13 @@ void MatlabPlot::plotTransformedData(const std::vector<Eigen::Vector3d>& users, 
     engPutVariable(ep, "satZ", satZ);
 
     // Построение графиков в MATLAB
-    engEvalString(ep, "hold on; grid on;"); // Добавляем новые данные на текущий график
+    engEvalString(ep, " hold on; grid on;");
+    // Отрисовка линии из центра Земли (0, 0, 0) в спутник
+    engEvalString(ep, "line([0, satX], [0, satY], [0, satZ], 'Color', 'b', 'LineWidth', 1);");
     engEvalString(ep, "plot3(usersX, usersY, usersZ, '.', 'DisplayName', 'Координаты пользователей');");
     engEvalString(ep, "plot3(satX, satY, satZ, '.', 'MarkerSize', 10, 'DisplayName', 'Спутник');");
 
-    engEvalString(ep, "plot3(0,0,0,'r.'); axis equal;xlabel('x, km'); ylabel('y, km'); zlabel('z, km'); ");
+
 
     // Освобождение памяти
     mxDestroyArray(usersX);
@@ -58,78 +60,61 @@ void MatlabPlot::plotTransformedData(const std::vector<Eigen::Vector3d>& users, 
 
 }
 
-void MatlabPlot::plotRayPoints(const Eigen::Vector3d& satellitePosition, const std::vector<Eigen::Vector3d>& rays) {
-    // Проверка данных
-    std::cout << "Satellite position: " << satellitePosition.transpose() << std::endl;
-    for (size_t i = 0; i < rays.size(); ++i) {
-        std::cout << "Ray " << i + 1 << ": " << rays[i].transpose() << std::endl;
-    }
+void MatlabPlot::plotEarth(Engine* ep) {
 
-    // Проверка на наличие лучей
-    if (rays.empty()) {
-        std::cerr << "Ошибка: Массив лучей пуст." << std::endl;
-        return;
-    }
-
-    // Вычисление конечных точек лучей
-    std::vector<Eigen::Vector3d> rayPoints;
-    for (const auto& ray : rays) {
-        rayPoints.push_back(satellitePosition + ray);
-    }
-
-    // Передача данных в MATLAB
-    mxArray* satPosArray = mxCreateDoubleMatrix(1, 3, mxREAL);
-    std::memcpy(mxGetPr(satPosArray), satellitePosition.data(), 3 * sizeof(double));
-    engPutVariable(ep, "satPos", satPosArray);
-
-    // Создание массива для конечных точек лучей
-    mxArray* rayPointsArray = mxCreateDoubleMatrix(rayPoints.size(), 3, mxREAL);
-    double* rayPointsData = mxGetPr(rayPointsArray);
-
-    // Заполнение массива данными
-    for (size_t i = 0; i < rayPoints.size(); ++i) {
-        for (size_t j = 0; j < 3; ++j) {
-            rayPointsData[i + j * rayPoints.size()] = rayPoints[i](j);  // Транспонирование данных
-        }
-    }
-    engPutVariable(ep, "rayPoints", rayPointsArray);
-
-    // Отрисовка спутника
-    engEvalString(ep, " hold on;");
-
-    // Отрисовка конечных точек лучей
-    engEvalString(ep, "plot3(satPos(1), satPos(2), satPos(3), 'ro', 'MarkerSize', 10, 'LineWidth', 2, 'DisplayName', 'Спутник');");
-
-    engEvalString(ep, "plot3(rayPoints(:, 1), rayPoints(:, 2), rayPoints(:, 3),'.','DisplayName', 'Точки лучей');");
-
-    // Настройка графика
-    engEvalString(ep, "grid on;");
-    engEvalString(ep, "xlabel('X'); ylabel('Y'); zlabel('Z');");
-    engEvalString(ep, "title('Точки лучей от спутника'); legend show;");
-    engEvalString(ep, "hold off;");
-
-    // Освобождение ресурсов
-    mxDestroyArray(satPosArray);
-    mxDestroyArray(rayPointsArray);
-}
-
-
-
-
-
-void MatlabPlot::plotEarth() {
-
-    engEvalString(ep, "hold on;");
+    engEvalString(ep, "figure; hold on; grid on;");
     engEvalString(ep, "[phi, theta] = meshgrid(linspace(0, 2*pi, 30), linspace(-pi/2, pi/2, 30));");
     engEvalString(ep, "R = 6371;");
     engEvalString(ep, "x_sphere = R * cos(phi) .* cos(theta);");
     engEvalString(ep, "y_sphere = R * sin(phi) .* cos(theta);");
     engEvalString(ep, "z_sphere = R * sin(theta);");
+    engEvalString(ep, "plot3(0,0,0,'r.'); ");
     engEvalString(ep, "surf(x_sphere, y_sphere, z_sphere, 'FaceColor', [0.7 0.7 0.7], 'FaceAlpha', 0.5, 'EdgeColor', 'none', 'DisplayName', 'Сфера Земли');");
     engEvalString(ep, "axis equal;");
     engEvalString(ep, "xlabel('x, km'); ylabel('y, km'); zlabel('z, km');");
     engEvalString(ep, "grid on");
     engEvalString(ep, "legend show;");
 
+}
 
+void MatlabPlot::plotCDF(Engine* ep, const std::vector<double>& DL_CNR_dB_vec, const std::vector<double>& DL_CIR_dB_vec, const std::vector<double>& DL_CINR_dB_vec, const std::string& scenario) {
+    // Проверка на пустые векторы
+    if (DL_CNR_dB_vec.empty() || DL_CIR_dB_vec.empty() || DL_CINR_dB_vec.empty()) {
+        std::cerr << "Error: One or more vectors are empty." << std::endl;
+        return;
+    }
+
+    // Передача данных CNR в MATLAB
+    mxArray* cnrArray = mxCreateDoubleMatrix(1, DL_CNR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cnrArray), DL_CNR_dB_vec.data(), DL_CNR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cnr", cnrArray);
+
+    // Передача данных CIR в MATLAB
+    mxArray* cirArray = mxCreateDoubleMatrix(1, DL_CIR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cirArray), DL_CIR_dB_vec.data(), DL_CIR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cir", cirArray);
+
+    // Передача данных CINR в MATLAB
+    mxArray* cinrArray = mxCreateDoubleMatrix(1, DL_CINR_dB_vec.size(), mxREAL);
+    std::memcpy(mxGetPr(cinrArray), DL_CINR_dB_vec.data(), DL_CINR_dB_vec.size() * sizeof(double));
+    engPutVariable(ep, "cinr", cinrArray);
+
+    // Передача сценария в MATLAB
+    mxArray* scenarioArray = mxCreateString(scenario.c_str());
+    engPutVariable(ep, "scenario", scenarioArray);
+
+    // Построение CDF в MATLAB
+    engEvalString(ep, "figure; hold on; grid on;");
+    engEvalString(ep, "[f_cnr, x_cnr] = ecdf(cnr); plot(x_cnr, f_cnr, 'DisplayName', 'CNR');");
+    engEvalString(ep, "[f_cir, x_cir] = ecdf(cir); plot(x_cir, f_cir, 'DisplayName', 'CIR');");
+    engEvalString(ep, "[f_cinr, x_cinr] = ecdf(cinr); plot(x_cinr, f_cinr, 'DisplayName', 'CINR');");
+    engEvalString(ep, "xlabel('SNR, дБ'); ylabel('CDF');");
+    engEvalString(ep, "title(['CDF для CNR, CIR и CINR (Сценарий: ', scenario, ')']);");
+    engEvalString(ep, "legend show;");
+
+    // Освобождение памяти
+    mxDestroyArray(cnrArray);
+    mxDestroyArray(cirArray);
+    mxDestroyArray(cinrArray);
+    mxDestroyArray(scenarioArray);
 }

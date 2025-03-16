@@ -70,7 +70,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_LOS_S[deg];
 			}
@@ -89,7 +89,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_LOS_Ka[deg];
 			}
@@ -111,7 +111,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_NLOS_S[deg];
 			}
@@ -130,7 +130,7 @@ double ChooseSTD(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				std = SF_std_Dense_Urban_NLOS_Ka[deg];
 			}
@@ -178,7 +178,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 	{
 		if (f < 6.0)
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				CL = CL_Dense_Urban_S[deg];
 			}
@@ -197,7 +197,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 		}
 		else
 		{
-			if (scenario == "Dense_Urban")
+			if (scenario == "DenseUrban")
 			{
 				CL = CL_Dense_Urban_Ka[deg];
 			}
@@ -221,202 +221,7 @@ double ChooseCL(bool los, double f, double alpha, std::string scenario)
 
 double CalculateBasisPathLoss(double FSPL, double SF, double CL)
 {
-	double PL_b = FSPL + SF + CL;
+	double PL_b = FSPL; // SF - добавляется позже  dist(0, 0.72) ,  CL  пока не учитываем ;
 	return PL_b;
 }
-
-// Расчёт газовых потерь(неправильно), пока не учитываем.
-
-// Расчёт газовых потерь 
-//double CalculatePathLossInGasses(double d, double f) 
-//{
-//	Engine* ep;
-//	MATFile* pmat;
-//	mxArray* pa_xData;
-//	mxArray* pa_yData;
-//	double* xData;
-//	double* yData;
-//	int numElements;
-//
-//	// Запускаем MATLAB Engine
-//	ep = engOpen(NULL);
-//	if (ep == NULL) {
-//		std::cerr << "Не удалось запустить MATLAB Engine!" << std::endl;
-//		return 1;
-//	}
-//
-//	// Открываем .mat файл
-//	pmat = matOpen("D:\\Всё моё\\Радиофак\\Практика\\РАДИО МОДУЛЬ\\ЗАДАНИЕ 2 (СПУТНИК)\\ChannelModel_NTN\\LSP\\gasAttTable.mat", "r");
-//	if (pmat == NULL) {
-//		std::cerr << "Не удалось открыть .mat файл!" << std::endl;
-//		engClose(ep);
-//		return 1;
-//	}
-//
-//	// Читаем xData из .mat файла
-//	pa_xData = matGetVariable(pmat, "xData");
-//	if (pa_xData == NULL) {
-//		std::cerr << "Не удалось прочитать xData из .mat файла!" << std::endl;
-//		matClose(pmat);
-//		engClose(ep);
-//		return 1;
-//	}
-//
-//	// Читаем yData из .mat файла
-//	pa_yData = matGetVariable(pmat, "yData");
-//	if (pa_yData == NULL) {
-//		std::cerr << "Не удалось прочитать yData из .mat файла!" << std::endl;
-//		mxDestroyArray(pa_xData); // Освобождаем память, выделенную для xData
-//		matClose(pmat);
-//		engClose(ep);
-//		return 1;
-//	}
-//
-//	// Получаем данные из mxArray для xData
-//	numElements = mxGetNumberOfElements(pa_xData); // Должно быть 1000
-//	xData = mxGetPr(pa_xData);
-//
-//	// Получаем данные из mxArray для yData
-//	int numElementsY = mxGetNumberOfElements(pa_yData);  // Должно быть 1000
-//	yData = mxGetPr(pa_yData);
-//
-//	// Проверка, что оба массива имеют одинаковую длину (опционально)
-//	if (numElements != numElementsY) {
-//		std::cerr << "Внимание: массивы xData и yData имеют разную длину!" << std::endl;
-//	}
-//
-//	// Выводим несколько элементов для проверки
-//	/*std::cout << "Первые 5 элементов xData:" << std::endl;
-//	for (int i = 0; i < 5; ++i) {
-//		std::cout << xData[i] << " ";
-//	}
-//	std::cout << std::endl;
-//
-//	std::cout << "Первые 5 элементов yData:" << std::endl;
-//	for (int i = 0; i < 5; ++i) {
-//		std::cout << yData[i] << " ";
-//	}
-//	std::cout << std::endl;*/
-//
-//	double logFC = log10(f);
-//	//std::cout << "logFC: " << logFC << std::endl;
-//	int ind; // Переменная, которая ищет элемент из mat таблицы
-//
-//	for (int i = 0; i < 1000; ++i)
-//	{
-//		if (logFC > xData[i])
-//		{
-//			continue;
-//		}
-//		else
-//		{
-//			ind = i;
-//			break;
-//		}
-//
-//	}
-//
-//	//std::cout << "Index of element: " << ind << std::endl;
-//	//std::cout << "xData[index]: " << xData[ind] << std::endl;
-//	//std::cout << "yData[index]: " << yData[ind] << std::endl;
-//
-//	double PL_g;
-//
-//	PL_g = pow(10, yData[ind]) * d;
-//
-//	// Закрываем .mat файл и MATLAB Engine
-//	mxDestroyArray(pa_xData);
-//	mxDestroyArray(pa_yData);
-//	matClose(pmat);
-//	engClose(ep);
-//
-//	return PL_g;
-//}
-
-
-// Расчёт потерь при прохождении через здания
-
-
-//Vector<double, 2> r = { 12.64, 28.19 };
-//Vector<double, 2> s = { 3.72, -3.00 };
-//Vector<double, 2> t = { 0.96, 8.48 };
-//Vector<double, 2> u = { 9.6, 13.5 };
-//Vector<double, 2> v = { 2.0, 3.8 };
-//Vector<double, 2> w = { 9.1, 27.8 };
-//Vector<double, 2> x = { -3.0, -2.9 };
-//Vector<double, 2> y = { 4.5, 9.4 };
-//Vector<double, 2> z = { -2.0, -2.1 };
-//
-//double C = -3.0;
-//
-//double CalculateLh(double r, double s, double f, double t)
-//{
-//	double Lh = r + s * log10(f) + t * pow(log10(f), 2);
-//	return Lh;
-//}
-//
-//double CalculateLe(double elevation)
-//{
-//	double Le = 0.212 * abs(elevation);
-//	return Le;
-//}
-//
-//Vector<double, 2> CalculateParametersForA(double Lh, double Le, double u, double v, double f)
-//{
-//	double mu_one = Lh + Le;
-//	double sigma_one = u + v * log10(f);
-//	Vector<double, 2> Apar = { mu_one, sigma_one };
-//	return Apar;
-//}
-//
-//Vector<double, 2> CalculateParametersForB(double w, double x, double y, double z, double f)
-//{
-//	double mu_two = w + x * log10(f);
-//	double sigma_two = y + z * log10(f);
-//	Vector<double, 2> Bpar = { mu_two, sigma_two };
-//	return Bpar;
-//}
-
-//double CalculateInverseCummulativeNormalDistribution(double P)
-//{
-//
-//}
-
-//double CalculateBuildingEntryLoss(double A, double B, double C)
-//{
-//	double PL_e = 10 * log10(pow(10, 0.1 * A) + pow(10, 0.1 * B) + pow(10, 0.1 * C));
-//	return PL_e;
-//}
-
-
-
-
-
-// PL = PL_b + PL_g + PL_s + PL_e
-// PL_b = FSPL + SF + CL(alpha, f)
-
-//double CalculateDistance(double Re, double h0, double alpha)
-//{
-//	double d = sqrt(pow(Re, 2) * pow(sin(alpha), 2) + pow(h0, 2) + 2 * h0 * Re) - Re * sin(alpha);
-//	return d;
-//}
-//
-//double GenerateSF(double std)
-//{
-//	double SF = RandomGenerators::generateGauss(0, std);
-//	return SF;
-//}
-//
-//double CalculatePathLoss(double d, double f, double SF, double CL)
-//{
-//	double PL = 0;
-//	double FSPL = 32.45 + 20 * log10(f) + 20 * log10(d);
-//	double PL_b = FSPL + SF + CL;
-//	double PL_e = 0;
-//	double PL_g = 0;
-//	double PL_s = 0;
-//	PL = PL_b + PL_g + PL_s + PL_e;
-//
-//	return PL;
-//}
 

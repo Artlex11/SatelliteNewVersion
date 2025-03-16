@@ -74,11 +74,12 @@ void LSP::initializeLosParameters(LinkData& link, VectorXd& Parameters) {
 
     link.SF_db = value[0];
     link.K_db = value[1];
-    link.DS_sec = value[2];
-    link.ASD_deg = value[3];
-    link.ASA_deg = value[4];
-    link.ZSA_deg = value[5];
-    link.ZSD_deg = value[6];
+    link.DS_sec = pow(10, value[2]);
+    link.ASD_deg = pow(10, value[3]);
+    link.ASA_deg = pow(10, value[4]);
+    link.ZSD_deg = pow(10, value[5]);
+    link.ZSA_deg = pow(10, value[6]);
+
 
 
 }
@@ -87,7 +88,6 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
 
 
     double StandardDeviationSF = Parameters[11]; // +
-    //StandardDeviationK = Parameters[13];
     double StandardDeviationDS = Parameters[1];
     double StandardDeviationASD = Parameters[3];
     double StandardDeviationASA = Parameters[5];
@@ -95,7 +95,6 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
     double StandardDeviationZSD = Parameters[9];
 
     double MeanSF = Parameters[10];
-    //MeanK = Parameters[12];
     double MeanDS = Parameters[0];
     double MeanASD = Parameters[2];
     double MeanASA = Parameters[4];
@@ -108,14 +107,8 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
     double ASDvsSF = Parameters[15]; // +
     double DSvsSF = Parameters[16]; // +
     double ASDvsASA = Parameters[17]; // +
-    //ASDvsK = Parameters[20]; // +
-    //ASAvsK = Parameters[21]; // +
-    //DSvsK = Parameters[22]; // +
-    //SFvsK = Parameters[23]; // +
     double ZSDvsSF = Parameters[18]; // +
     double ZSAvsSF = Parameters[19]; // +
-    //ZSDvsK = Parameters[26]; // +
-    //ZSAvsK = Parameters[27]; // +
     double ZSDvsDS = Parameters[20]; // +
     double ZSAvsDS = Parameters[21]; // +
     double ZSDvsASD = Parameters[22]; //+
@@ -147,54 +140,12 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
     value = C.llt().matrixL() * value + means;
 
     link.SF_db = value[0];
-    link.DS_sec = value[1];
-    link.ASD_deg = value[2];
-    link.ASA_deg = value[3];
-    link.ZSA_deg = value[4];
-    link.ZSD_deg = value[5];
-
-    /* double StandardDeviationSF, StandardDeviationDS, StandardDeviationASD, StandardDeviationASA, StandardDeviationZSA, StandardDeviationZSD;
-     double MeanSF, MeanDS, MeanASD, MeanASA, MeanZSA, MeanZSD;
-     double ASDvsDS, ASAvsDS, ASAvsSF, ASDvsSF, DSvsSF, ASDvsASA, ZSDvsSF, ZSAvsSF, ZSDvsDS,
-         ZSAvsDS, ZSDvsASD, ZSAvsASD, ZSDvsASA, ZSAvsASA, ZSDvsZSA;
+    link.K_db = -INFINITY;
+    link.DS_sec = pow(10, value[1]);
+    link.ASD_deg = pow(10, value[2]);
+    link.ASA_deg = pow(10, value[3]);
+    link.ZSD_deg = pow(10, value[4]);
+    link.ZSA_deg = pow(10, value[5]);
 
 
-
-     Eigen::VectorXd value(6);
-     Eigen::VectorXd means(6);
-     Eigen::MatrixXd C(6, 6);
-
-
-     means << MeanSF, MeanDS, MeanASD, MeanASA, MeanZSD, MeanZSA;
-
-     C << StandardDeviationSF * StandardDeviationSF, -0.5 * StandardDeviationSF * StandardDeviationDS, 0.0 * StandardDeviationSF * StandardDeviationASD, -0.4 * StandardDeviationSF * StandardDeviationASA, 0.0 * StandardDeviationSF * StandardDeviationZSD, 0.0 * StandardDeviationSF * StandardDeviationZSA,
-         -0.5 * StandardDeviationDS * StandardDeviationSF, StandardDeviationDS* StandardDeviationDS, 0.4 * StandardDeviationDS * StandardDeviationASD, 0.0 * StandardDeviationDS * StandardDeviationASA, -0.27 * StandardDeviationDS * StandardDeviationZSD, -0.06 * StandardDeviationDS * StandardDeviationZSA,
-         0.0 * StandardDeviationASD * StandardDeviationSF, 0.4 * StandardDeviationASD * StandardDeviationDS, StandardDeviationASD* StandardDeviationASD, 0.0 * StandardDeviationASD * StandardDeviationASA, 0.35 * StandardDeviationASD * StandardDeviationZSD, 0.23 * StandardDeviationASD * StandardDeviationZSA,
-         -0.4 * StandardDeviationASA * StandardDeviationSF, 0.0 * StandardDeviationASA * StandardDeviationDS, 0.0 * StandardDeviationASA * StandardDeviationASD, StandardDeviationASA* StandardDeviationASA, -0.08 * StandardDeviationASA * StandardDeviationZSD, 0.43 * StandardDeviationASA * StandardDeviationZSA,
-         0.0 * StandardDeviationZSD * StandardDeviationSF, -0.27 * StandardDeviationZSD * StandardDeviationDS, 0.35 * StandardDeviationZSD * StandardDeviationASD, -0.08 * StandardDeviationZSD * StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, 0.42 * StandardDeviationZSD * StandardDeviationZSA,
-         0.0 * StandardDeviationZSA * StandardDeviationSF, -0.06 * StandardDeviationZSA * StandardDeviationDS, 0.23 * StandardDeviationZSA * StandardDeviationASD, 0.43 * StandardDeviationZSA * StandardDeviationASA, 0.42 * StandardDeviationZSA * StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
-
-     Eigen::MatrixXd L = C.llt().matrixL();
-
-     for (int i = 0; i < 6; ++i) {
-         value(i) = RandomGenerators::generateGauss(0.0, 1.0);
-     }
-
-     Eigen::VectorXd value_new = L * value + means;
-
-     shadowFading = value_new(0);
-     delaySpread = value_new(1);
-     azimuthSpreadDeparture = std::min(value_new(2), log10(104.0));
-     azimuthSpreadArrival = std::min(value_new(3), log10(104.0));
-     zenithSpreadDeparture = std::min(value_new(4), log10(52.0));
-     zenithSpreadArrival = std::min(value_new(5), log10(52.0));
- }
-
- void LargeScaleParameters::showParameters() const {
-     if (los) {
-         std::cout << "SF [dB] : " << shadowFading << ",\nK [dB] : " << riceanK << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
-     }
-     else {
-         std::cout << "SF [dB] : " << shadowFading << ",\nDS [log10(DS/1s)] : " << delaySpread << ",\nASD [log10(ASD/ 1* degree] : " << azimuthSpreadDeparture << ",\nASA [log10(ASA/ 1* degree] : " << azimuthSpreadArrival << ",\nZSD [log10(ZSD/ 1* degree] : " << zenithSpreadDeparture << ",\nZSA [log10(ZSA/ 1* degree] : " << zenithSpreadArrival << std::endl << std::endl;
-     }*/
 }

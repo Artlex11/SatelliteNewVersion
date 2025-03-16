@@ -39,10 +39,13 @@
     <ClCompile Include="LargeScaleParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Satellite_link.cpp">
+    <ClCompile Include="NTN_Deployment.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="NTN_Deployment.cpp">
+    <ClCompile Include="LinkBudget.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="SmallScaleParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -68,10 +71,13 @@
     <ClInclude Include="LargeScaleParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Satellite_link.h">
+    <ClInclude Include="NTN_Deployment.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="NTN_Deployment.h">
+    <ClInclude Include="LinkBudget.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="SmallScaleParameters.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

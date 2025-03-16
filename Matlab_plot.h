@@ -5,17 +5,16 @@
 #include <Eigen/Dense>
 #include <vector>
 
-class MatlabPlot {
-public:
-    MatlabPlot();
-    ~MatlabPlot();
+namespace MatlabPlot {
 
-    void plotTransformedData(const std::vector<Eigen::Vector3d>& users, const Eigen::Vector3d& satellite);
-    void plotEarth();
-    void plotRayPoints(const Eigen::Vector3d& satellitePosition, const std::vector<Eigen::Vector3d>& rays);
+    //MatlabPlot();
+    //~MatlabPlot();
 
-private:
-    Engine* ep;
+    void plotTransformedData(Engine* ep, const std::vector<Eigen::Vector3d>& users, const Eigen::Vector3d& satellite);
+    void plotEarth(Engine* ep);
+    void plotCDF(Engine* ep, const std::vector<double>& DL_CNR_dB_vec, const std::vector<double>& DL_CIR_dB_vec, const std::vector<double>& DL_CINR_dB_vec, const std::string& scenario);
+
+
 };
 
-#endif // MATLAB_PLOT_H#pragma once
+#endif // MATLAB_PLOT_H

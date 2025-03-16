@@ -8,8 +8,8 @@
 #include "Matlab_plot.h"
 
 // для работы с MATLAB
-#include "engine.h"
-#include "mat.h"
+//#include "engine.h"
+//#include "mat.h"
 // Глобальные константы
 const double EARTH_RADIUS = 6371.0; // Радиус Земли
 
