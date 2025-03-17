@@ -14,8 +14,8 @@
 #include "LinkBudget.h"
 #include "Matlab_plot.h"
 
-
-void plotCDF(const std::vector<double>& data, const std::string& parameterName, const std::string& scenario, Engine* ep, int figureNumber) {
+void plotCDF(const std::vector<double>& data, const std::string& parameterName, const std::string& scenario, Engine* ep, int figureNumber, int frequencyChoice, std::vector<std::string> frequencyBands)
+{
     // Передача данных в MATLAB
     mxArray* mxData = mxCreateDoubleMatrix(1, data.size(), mxREAL);
     std::memcpy(mxGetPr(mxData), data.data(), data.size() * sizeof(double));
@@ -26,19 +26,18 @@ void plotCDF(const std::vector<double>& data, const std::string& parameterName, 
         "figure(" + std::to_string(figureNumber) + "); "
         "[f, x] = ecdf(data); "
         "plot(x, f, 'DisplayName', '" + scenario + "'); "
-        "title('CDF of " + parameterName + "'); "
+        "title('CDF of " + parameterName + " for " + frequencyBands[frequencyChoice-1] + "-band'); "
         "xlabel('" + parameterName + "'); "
         "ylabel('CDF'); "
         "grid on; "
         "hold on; "  // Включаем режим добавления графиков
-        "legend show;";
+        "legend ('show', 'location', 'best')";
 
     engEvalString(ep, command.c_str());
 
     // Освобождение памяти
     mxDestroyArray(mxData);
 }
-
 
 // Функция для вычисления диаграммы направленности
 void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) {
@@ -174,9 +173,6 @@ int main() {
             //MatlabPlot::plotEarth(ep);
             //MatlabPlot::plotTransformedData( ep ,users, UEswithSat.links.getLinks()[0].satellitePosition);
 
-
-
-
             std::vector<Eigen::Vector3d> rRays = UEswithSat.getVectorsToCellCenters();
             MatrixXd arrPatt_magn(UEswithSat.links.getLinks().size(), rRays.size());
             std::vector<double> arrPatt;
@@ -212,7 +208,6 @@ int main() {
                 SSP::generateClusterDelays(link);
                 std::pair<std::vector<double>, std::vector<double>> clusterPower = SSP::generateClusterPowers(link);
 
-
                 //std::cout << "Power before:\n";
                 //for (double val : clusterPower.first) {
                 //    std::cout << val << " ";
@@ -223,15 +218,11 @@ int main() {
                 SSP::generateXPR(link);
                 SSP::sortRelativeToFirstVector(clusterPower.first, link.clusterDelays, link.AOA_n_m, link.AOD_n_m, link.ZOA_n_m, link.ZOD_n_m, link.XPR_n_m);
 
-
-
                 //std::cout << "Power after:\n";
                 //for (double val : clusterPower.first) {
                 //    std::cout << val << " ";
                 //}
                 //std::cout << "\n";
-
-
 
                 double d = CalculateDistance(EARTH_RADIUS, satHeightKm, link.elevationAngle * PI / 180);
                 double std = ChooseSTD(link.isLos, f, link.elevationAngle, scenario);
@@ -266,8 +257,6 @@ int main() {
                 PL_lin_magn.push_back(PL_lin_magnitude);
                 arrPatt.push_back(arrPatt_magn.row(countLink).maxCoeff(&RayUElist.emplace_back()));
 
-
-
                 ClusterDelay_sec_values.insert(ClusterDelay_sec_values.end(), link.clusterScaledDelays.begin(), link.clusterScaledDelays.end());
                 //ClusterPower_lin_values.insert(ClusterPower_lin_values.end(), clusterPower.first.begin(), clusterPower.first.end());
 
@@ -299,23 +288,33 @@ int main() {
 
             }
 
+            plotCDF(SF_db_values, "SF, db", scenario, ep, 1, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([-40 100])");
+            plotCDF(K_db_values, "K, db", scenario, ep, 2, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([-50 100])");
+            plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1e-6])");
+            plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1e3])");
+            plotCDF(ASD_deg_values, "ASD, rad", scenario, ep, 5, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1.6])");
+            plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 360])");
+            plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 100])");
+            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1e-6])");
+            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1])");
 
-            //plotCDF(SF_db_values, "SF, db", scenario, ep, 1);
-            //plotCDF(K_db_values, "K, db", scenario, ep, 2);
-            //plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3);
-            //plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4);
-            //plotCDF(ASD_deg_values, "ASD, deg", scenario, ep, 5);
-            //plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6);
-            //plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7);
-            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8);
-            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9);
-
-            plotCDF(AOD_values, "AOD_values, degree", scenario, ep, 10);
-            plotCDF(AOA_values, "AOA_values, degree", scenario, ep, 11);
-            plotCDF(ZOD_values, "ZOD_values, degree", scenario, ep, 12);
-            plotCDF(ZOA_values, "ZOA_values, degree", scenario, ep, 13);
-
-
+            plotCDF(AOD_values, "AOD values, degree", scenario, ep, 10, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([-200 200])");
+            plotCDF(AOA_values, "AOA values, degree", scenario, ep, 11, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([-200 200])");
+            plotCDF(ZOD_values, "ZOD values, degree", scenario, ep, 12, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 180])");
+            plotCDF(ZOA_values, "ZOA values, degree", scenario, ep, 13, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 180])");
 
             for (int rayIndex : RayUElist) {
                 bool found = false;
@@ -455,23 +454,24 @@ int main() {
                 ZSD_deg_values.push_back(link.ZSD_deg);
 
             }
-            plotCDF(SF_db_values, "SF, db", scenario, ep, 1);
+            plotCDF(SF_db_values, "SF, db", scenario, ep, 1, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([-40 100])");
-            plotCDF(K_db_values, "K, db", scenario, ep, 2);
+            plotCDF(K_db_values, "K, db", scenario, ep, 2, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([-50 100])");
-            plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3);
+            plotCDF(DS_sec_values, "DS, sec", scenario, ep, 3, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1e-6])");
-            plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4);
+            plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1000])");
-            plotCDF(ASD_deg_values, "ASD, deg", scenario, ep, 5);
+            plotCDF(ASD_deg_values, "ASD, rad", scenario, ep, 5, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1.6])");
-            plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6);
-            engEvalString(ep, "xlim([0 350])");
-            plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7);
+            plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 360])");
+            plotCDF(ZSD_deg_values, "ZSD, deg", scenario, ep, 7, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 100])");
-            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8);
+            plotCDF(ClusterDelay_sec_values, "Cluster Delays, sec", scenario, ep, 8, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1e-6])");
-            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9);
+            plotCDF(ClusterPower_lin_values, "Relative Cluster Powers, linear scale", scenario, ep, 9, frequencyChoice, frequencyBands);
+            engEvalString(ep, "xlim([0 1])");
 
             auto end = std::chrono::high_resolution_clock::now();
             std::chrono::duration<double> elapsed = end - start;
