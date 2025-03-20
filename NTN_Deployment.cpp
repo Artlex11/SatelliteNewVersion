@@ -1,7 +1,9 @@
 #include "NTN_Deployment.h"
 
+// конструктор класса SatelliteLink
 SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, double satHeightKm, double elMinDegrees, double elTargetDegrees, double azTargetDegrees)
-    : nTiersCore(nTiersCore), nTiresWrArnd(nTiresWrArnd), nUePerCell(nUePerCell), satHeightKm(satHeightKm), elMinDegrees(elMinDegrees), elTargetDegrees(elTargetDegrees), azTargetDegrees(azTargetDegrees) {
+    : nTiersCore(nTiersCore), nTiresWrArnd(nTiresWrArnd), nUePerCell(nUePerCell), satHeightKm(satHeightKm), elMinDegrees(elMinDegrees), elTargetDegrees(elTargetDegrees), azTargetDegrees(azTargetDegrees) 
+{
     nTiers = nTiersCore + nTiresWrArnd;
     nCells = 1 + (nTiers * (nTiers + 1) * 3);
     nUEs = nCells * nUePerCell;
@@ -23,8 +25,10 @@ SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, d
 
 
 
-void SatelliteLink::generateLinks() {
+void SatelliteLink::generateLinks() 
+{
     std::vector<Eigen::Vector3d> xyzUEs_all(nUEs);
+
     xyzUEs_all.reserve(nUEs);
 
     int UEcnt = 0;

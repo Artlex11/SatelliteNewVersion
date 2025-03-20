@@ -179,6 +179,7 @@ int main()
             std::cout << "Invalid choice. Please try again.\n";
             return 1;
         }
+
         double f = (frequencyChoice == 1) ? 2.0 : 20.0;
 
         for (size_t i = 0; i < scenarios.size(); ++i) 
@@ -326,7 +327,7 @@ int main()
             engEvalString(ep, "xlim([0 1e-6])");
             plotCDF(ASA_deg_values, "ASA, deg", scenario, ep, 4, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1e3])");
-            plotCDF(ASD_deg_values, "ASD, rad", scenario, ep, 5, frequencyChoice, frequencyBands);
+            plotCDF(ASD_deg_values, "ASD, deg", scenario, ep, 5, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 1.6])");
             plotCDF(ZSA_deg_values, "ZSA, deg", scenario, ep, 6, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 360])");

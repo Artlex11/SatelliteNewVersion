@@ -22,7 +22,8 @@ double standardDeviationXPR = 0.0;
 double clucterDS_ns = 0.0;
 
 
-void SSP::setParameters(Eigen::VectorXd Parameters) {
+void SSP::setParameters(Eigen::VectorXd Parameters) 
+{
     //std::cout << "Parameters.size(): " << Parameters.size() << '\n';
     r_tau = Parameters[Parameters.size() - 11];
 
@@ -54,8 +55,8 @@ void SSP::setParameters(Eigen::VectorXd Parameters) {
 }
 
 //Исправленный метод 
-void SSP::generateClusterDelays(LinkData& link) {
-
+void SSP::generateClusterDelays(LinkData& link) 
+{
     double riceanK = link.K_db;
     double delaySpread = link.DS_sec;
 
@@ -66,8 +67,8 @@ void SSP::generateClusterDelays(LinkData& link) {
     std::mt19937 gen(rd());
     std::uniform_real_distribution<> dis(0.0, 1.0);
 
-    for (int n = 0; n < numberClusters; ++n) {
-
+    for (int n = 0; n < numberClusters; ++n) 
+    {
         double Xn = dis(gen);// RandomGenerators::generateUniform(0.0, 1.0);
         delay_tau_n = (-1.0) * r_tau * log(Xn) * delaySpread;
         delays_tau.push_back(delay_tau_n);
@@ -75,7 +76,8 @@ void SSP::generateClusterDelays(LinkData& link) {
 
     // Нормализация и сортировка задержек
     double minDelay_tau_n = *std::min_element(delays_tau.begin(), delays_tau.end());
-    for (int i = 0; i < numberClusters; ++i) {
+    for (int i = 0; i < numberClusters; ++i) 
+    {
         delays_tau[i] -= minDelay_tau_n;
     }
     std::sort(delays_tau.begin(), delays_tau.end());
@@ -83,9 +85,11 @@ void SSP::generateClusterDelays(LinkData& link) {
     link.clusterDelays = delays_tau;
 
     // Масштабирование для LOS
-    if (link.isLos) {
+    if (link.isLos)
+    {
         double scalingFactor = (0.000017 * riceanK * riceanK * riceanK) + (0.0002 * riceanK * riceanK) - (0.0433 * riceanK) + 0.7705; //(TR38.901v17.0.0 Rel_17, formula 7.5 - 3)
-        for (int n = 0; n < numberClusters; ++n) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
             delays_tau[n] /= scalingFactor; //(TR38.901v17.0.0 Rel_17, formula 7.5-4)
         }
     }
@@ -94,8 +98,8 @@ void SSP::generateClusterDelays(LinkData& link) {
 
 
 
-std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(LinkData& link) {
-
+std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(LinkData& link) 
+{
     double delaySpread = link.DS_sec;
 
     std::vector<double> clusterDelays = link.clusterDelays;
@@ -108,9 +112,8 @@ std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(L
     std::mt19937 gen(rd());
     std::normal_distribution<> gaussDist(0.0, 1.0);
 
-    for (int n = 0; n < numberClusters; ++n) {
-
-
+    for (int n = 0; n < numberClusters; ++n) 
+    {
         double shadowing = (-1) * ksi * gaussDist(gen);
 
         power = exp(clusterDelays[n] * (1.0 - r_tau) / (r_tau * delaySpread)) * pow(10.0, (shadowing / 10.0));
@@ -118,7 +121,8 @@ std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(L
         sumClusterPowers += power;
     }
 
-    for (int n = 0; n < numberClusters; ++n) {
+    for (int n = 0; n < numberClusters; ++n)
+    {
         clusterPowers[n] = clusterPowers[n] / sumClusterPowers;
     }
 
@@ -126,30 +130,36 @@ std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(L
 
     maxPower = 0.0;
 
-    if (link.isLos) {
-
+    if (link.isLos) 
+    {
         double K_lin = pow(10.0, link.K_db / 10.0);
 
-        for (int n = 0; n < numberClusters; ++n) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
             clusterPowersWithScalingFactors[n] = clusterPowersWithScalingFactors[n] / (K_lin + 1.0);
         }
         clusterPowersWithScalingFactors[0] = clusterPowersWithScalingFactors[0] + (K_lin / (K_lin + 1.0));
 
         maxPower = *std::max_element(clusterPowersWithScalingFactors.begin(), clusterPowersWithScalingFactors.end());
 
-        for (int n = 0; n < numberClusters; ++n) {
-            if (log10(clusterPowersWithScalingFactors[n] / maxPower) < (-2.5)) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
+            if (log10(clusterPowersWithScalingFactors[n] / maxPower) < (-2.5)) 
+            {
                 clusterPowers[n] = 0.0;
                 clusterPowersWithScalingFactors[n] = 0.0;
             }
         }
     }
 
-    if (!link.isLos) {
+    if (!link.isLos)
+    {
         maxPower = *std::max_element(clusterPowers.begin(), clusterPowers.end());
 
-        for (int n = 0; n < numberClusters; ++n) {
-            if (log10(clusterPowers[n] / maxPower) < (-2.5)) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
+            if (log10(clusterPowers[n] / maxPower) < (-2.5))
+            {
                 clusterPowers[n] = 0.0;
                 clusterPowersWithScalingFactors[n] = 0.0;
             }
@@ -164,8 +174,8 @@ std::pair<std::vector<double>, std::vector<double>> SSP::generateClusterPowers(L
 
 
 //Исправленный метод 
-void SSP::calculateLosAngles(LinkData& link, Eigen::Vector3d y_local, Eigen::Vector3d z_local) {
-
+void SSP::calculateLosAngles(LinkData& link, Eigen::Vector3d y_local, Eigen::Vector3d z_local)
+{
     // Вектор "спутник-пользователь"
     Eigen::Vector3d v = link.userPosition - link.satellitePosition;
     double v_norm = v.norm();
@@ -267,11 +277,6 @@ void SSP::calculateLosAngles(LinkData& link, Eigen::Vector3d y_local, Eigen::Vec
 
 
 
-
-
-
-
-
 void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> clusterPowersWithScalingFactors) {
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -297,27 +302,32 @@ void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> 
     Eigen::VectorXd ZOA_n(numberClusters);
 
     double ASD_1_4 = ASD / 1.4;
-    double ASA_1_4 = ASA / 1.4;
+    double ASA_1_4 = ASA / 1.4; 
     double ASD_7 = ASD / 7.0;
-    double ASA_7 = ASA / 7.0;
-    double ZSD_7 = ZSD / 7.0;
+    double ASA_7 = ASA / 7.0; 
+    double ZSD_7 = ZSD / 7.0; 
     double ZSA_7 = ZSA / 7.0;
 
-    if (link.isLos) {
+    if (link.isLos) 
+    {
         C_phi = C_phi * ((0.0001 * kFactor * kFactor * kFactor) - (0.002 * kFactor * kFactor) - (0.028 * kFactor) + 1.1035);
         C_theta = C_theta * ((0.0002 * kFactor * kFactor * kFactor) - (0.0077 * kFactor * kFactor) + (0.0339 * kFactor) + 1.3086);
 
         double invC_phi = 1.0 / C_phi;
         double invC_theta = 1.0 / C_theta;
 
-        for (int n = 0; n < numberClusters; ++n) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
             double logPower = std::log(clusterPowersWithScalingFactors[n] / maxPower);
 
+            // (7.5-9)
             AOD_n(n) = 2.0 * ASD_1_4 * std::sqrt(-logPower) * invC_phi;
             AOA_n(n) = 2.0 * ASA_1_4 * std::sqrt(-logPower) * invC_phi;
+            // (7.5-14)
             ZOD_n(n) = -ZSD * logPower * invC_theta;
             ZOA_n(n) = -ZSA * logPower * invC_theta;
 
+            // (7.5-11) и (7.5-16) without LOS term
             AOD_n(n) = (AOD_n(n) * discreteValues[discreteDist(gen)]) + (gaussDist(gen) * ASD_7);
             AOA_n(n) = (AOA_n(n) * discreteValues[discreteDist(gen)]) + (gaussDist(gen) * ASA_7);
             ZOD_n(n) = (ZOD_n(n) * discreteValues[discreteDist(gen)]) + (gaussDist(gen) * ZSD_7);
@@ -330,20 +340,26 @@ void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> 
         double ZOD_1 = ZOD_n(0);
         double ZOA_1 = ZOA_n(0);
 
-        for (int n = 0; n < numberClusters; ++n) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
             AOD_n(n) = AOD_n(n) - AOD_1;
             AOA_n(n) = AOA_n(n) - AOA_1;
             ZOD_n(n) = ZOD_n(n) - ZOD_1;
             ZOA_n(n) = ZOA_n(n) - ZOA_1;
 
-            for (int m = 0; m < numberRaysPerCluster; ++m) {
+            for (int m = 0; m < numberRaysPerCluster; ++m) 
+            {
                 auto rayOffsetAngle = rayOfsetAngles[m];
 
                 // Нормализация углов в диапазон [-180, 180]
-                auto normalizeAngle = [](double angle) {
-                    angle = fmod(angle, 360.0);  // Приводим к [0, 360)
-                    if (angle < 0) { angle += 360.0; }
-                    return angle;
+                auto normalizeAngle = [](double angle)
+                    {
+                        angle = fmod(angle, 360.0);  // Приводим к [0, 360)
+                        if (angle < 0)
+                        {
+                            angle += 360.0;
+                        }
+                        return angle;
                     };
 
                 AOD_n_m(n + 1, m) = fmod(AOD_n(n) + rayOffsetAngle * clustASD, 180);
@@ -353,11 +369,13 @@ void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> 
             }
         }
     }
-    else {
+    else
+    {
         double invC_phi = 1.0 / C_phi;
         double invC_theta = 1.0 / C_theta;
 
-        for (int n = 0; n < numberClusters; ++n) {
+        for (int n = 0; n < numberClusters; ++n) 
+        {
             double logPower = std::log(clusterPowersWithScalingFactors[n] / maxPower);
             AOD_n(n) = 2.0 * ASD_1_4 * std::sqrt(-logPower) * invC_phi;
             AOA_n(n) = 2.0 * ASA_1_4 * std::sqrt(-logPower) * invC_phi;
@@ -369,18 +387,20 @@ void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> 
             ZOD_n(n) = (ZOD_n(n) * discreteValues[discreteDist(gen)]) + (gaussDist(gen) * ZSD_7);
             ZOA_n(n) = (ZOA_n(n) * discreteValues[discreteDist(gen)]) + (gaussDist(gen) * ZSA_7);
 
-            for (int m = 0; m < numberRaysPerCluster; ++m) {
+            for (int m = 0; m < numberRaysPerCluster; ++m) 
+            {
                 auto rayOffsetAngle = rayOfsetAngles[m];
 
-
-                auto normalizeAngle = [](double angle) {
+                auto normalizeAngle = [](double angle) 
+                    {
                     angle = fmod(angle, 360.0);  // Приводим к [0, 360)
                     if (angle < 0) { angle += 360.0; }
-                    if (angle > 180 && angle < 360) { angle = 360 - angle; }
+                    if (angle > 180 && angle < 360) 
+                    { 
+                        angle = 360 - angle; 
+                    }
                     return angle;
                     };
-
-
 
                 AOD_n_m(n, m) = fmod(AOD_n(n) + rayOffsetAngle * clustASD, 180);
                 AOA_n_m(n, m) = fmod(AOA_n(n) + rayOffsetAngle * clustASA, 180);
@@ -397,31 +417,9 @@ void SSP::generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> 
     link.ZOA_n_m = ZOA_n_m;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-void SSP::generateXPR(LinkData& link) {
+void SSP::generateXPR(LinkData& link) 
+{
     Eigen::MatrixXd XPR(numberClusters, numberRaysPerCluster);
-
 
     std::random_device rd;
     std::mt19937 gen(rd());

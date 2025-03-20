@@ -22,8 +22,10 @@
 
 
 // Пользовательская хэш-функция для Eigen::Vector2d
-struct Vector2dHash {
-    std::size_t operator()(const Eigen::Vector2d& v) const {
+struct Vector2dHash 
+{
+    std::size_t operator()(const Eigen::Vector2d& v) const 
+    {
         std::size_t seed = 0;
         seed ^= std::hash<double>()(v.x()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
         seed ^= std::hash<double>()(v.y()) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
@@ -33,12 +35,14 @@ struct Vector2dHash {
 
 
 
-class SatelliteLink {
-
-
+class SatelliteLink 
+{
 public:
+
     SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, double satHeightKm, double elMinDegrees, double elTargetDegrees, double azTargetDegrees);
+
     void generateLinks();
+
     Links links;
 
     std::vector<Eigen::Vector2d> uvSet;
@@ -50,17 +54,18 @@ public:
     std::vector<Eigen::Vector3d> getVectorsToCellCenters();
     Eigen::Vector3d uvTo3D(const Eigen::Vector2d& uv);
 
-
 private:
+
     void generateUVPlane();
+
     void generateCoreUVPlane();
+
     //double calculateElevetionAngle(const Eigen::Vector3d& UE, const Eigen::Vector3d& Sat); // Встроен в generateLinks()
     std::vector<Eigen::Vector3d> generateRandomPoints(int count);
 
     int nTiersCore, nTiresWrArnd, nUePerCell, nTiers, nCells, nUEs;
     double satHeightKm, elMinDegrees, elTargetDegrees, azTargetDegrees, rEarth, beamWidth_degrees, uvStep, uvBeamRadius;
     Eigen::Vector3d xyzSat, xyzSatOnEarth;
-
 
 };
 

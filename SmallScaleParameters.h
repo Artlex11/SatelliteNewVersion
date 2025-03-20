@@ -21,9 +21,17 @@
 
 namespace SSP {
 
+	/*
+	NaN 0.501 0.680 0.779 0.860 NaN NaN 1.018 NaN 1.090 1.123 1.146 NaN 1.190 1.211 1.226 NaN NaN 1.273 1.289
+
+	NaN 0.430 0.594 0.697 NaN  NaN NaN 0.889 NaN 0.957 1.031 1.104 NaN NaN 1.1088 NaN NaN NaN 1.184 1.178
+	*/
 
 	//3GPP TR 38.811 V15.4.0 (2020-09) Table 6.7.2-1aa
-	const std::vector<double> tableScalingFactorsAOAandAOD = { 0.0, 0.501 , 0.680, 0.779, 0.860, 0.0, 0.0, 1.090, 1.123, 1.146, 0.0, 1.190, 1.211, 1.226, 0.0, 0.0, 1.273, 1.289 };
+
+	/*const std::vector<double> tableScalingFactorsAOAandAOD = { 0.0, 0.501, 0.680, 0.779, 0.860, 0.0, 0.0, 1.090, 1.123, 1.146, 0.0, 1.190, 1.211, 1.226, 0.0, 0.0, 1.273, 1.289 };*/
+	const std::vector<double> tableScalingFactorsAOAandAOD = { 0.0, 0.501, 0.680, 0.779, 0.860, 0.0, 0.0, 1.018, 0.0, 1.090, 1.123, 1.146, 0.0, 1.190, 1.211, 1.226, 0.0, 0.0, 1.273, 1.289 };
+
 	//3GPP TR 38.811 V15.4.0 (2020-09) Table 6.7.2-1ab
 	const std::vector<double> tableScalingFactorsZOAandZOD = { 0.0, 0.430, 0.594, 0.697, 0.0, 0.0, 0.0, 0.889, 0.0, 0.957, 1.031, 1.104, 0.0, 0.0, 1.1088, 0.0, 0.0, 0.0, 1.184, 1.178 };
 
@@ -32,22 +40,17 @@ namespace SSP {
 												0.8844, -0.8844, 1.1481, -1.1481, 1.5195, -1.5195,
 												2.1551, -2.1551 };
 
-
-
-
-
-
-
 	void setParameters(Eigen::VectorXd Parameters);
+
 	void generateClusterDelays(LinkData& link);
+
 	std::pair<std::vector<double>, std::vector<double>>  generateClusterPowers(LinkData& link);
 
-
-
 	void calculateLosAngles(LinkData& link, Eigen::Vector3d y_local, Eigen::Vector3d z_local);
-	void generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> clusterPowersWithScalingFactors);
-	void generateXPR(LinkData& link);
 
+	void generateArrivalAndDepartureAngles(LinkData& link, std::vector<double> clusterPowersWithScalingFactors);
+
+	void generateXPR(LinkData& link);
 
 
 	//std::vector<double> calculateAngularSpreadandMeanAngles(bool los, const std::vector<double>& clusterPowers,
@@ -55,9 +58,6 @@ namespace SSP {
 		//Eigen::MatrixXd& ZOD, Eigen::MatrixXd& ZOA);
 
 	// Функция для перемешивания подгруппы в строке (без копирования данных)
-
-
-
 
 	const std::vector<size_t> subCluster1 = { 0, 1, 2, 3, 4, 5, 6, 7, 18, 19 };
 	const std::vector<size_t> subCluster2 = { 8, 9, 10, 11, 16, 17 };
