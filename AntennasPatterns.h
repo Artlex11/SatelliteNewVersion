@@ -28,4 +28,7 @@ namespace INDOOR
 	double AntennaPattern_Indoor_3D(double az_deg, double el_deg);
 }
 
+// Функция для вычисления диаграммы направленности
+//void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL);
+
 #endif

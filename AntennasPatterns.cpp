@@ -66,5 +66,29 @@ namespace INDOOR
 	}
 }
 
+// Функция для вычисления диаграммы направленности
+//void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL)
+//{
+//	double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
+//
+//	for (int i = 0; i < teta_rad.size(); ++i)
+//	{
+//		double teta = teta_rad(i);
+//		if (teta == 0)
+//		{
+//			AP_dB(i) = 1.0;
+//		}
+//		else
+//		{
+//			double bessel_arg = 2 * M_PI * rDish_WL * sin(teta);
+//			double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
+//			//double bessel_val = std::cyl_bessel_j(1, bessel_arg);
+//			double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+//			//double res = 4 * std::pow(std::abs(bessel_val / bessel_arg), 2);
+//			AP_dB(i) = 10 * log10(res) + Gain;
+//			//AP_lin(i) = pow(10, AP_dB(i)); - linear scale
+//		}
+//	}
+//}
 
 

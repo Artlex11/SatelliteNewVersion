@@ -39,19 +39,18 @@ void plotCDF(const std::vector<double>& data, const std::string& parameterName, 
     mxDestroyArray(mxData);
 }
 
-// Функция для вычисления диаграммы направленности
-void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) 
+void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL)
 {
     double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
 
-    for (int i = 0; i < teta_rad.size(); ++i) 
+    for (int i = 0; i < teta_rad.size(); ++i)
     {
         double teta = teta_rad(i);
-        if (teta == 0) 
+        if (teta == 0)
         {
             AP_dB(i) = 1.0;
         }
-        else 
+        else
         {
             double bessel_arg = 2 * M_PI * rDish_WL * sin(teta);
             double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
