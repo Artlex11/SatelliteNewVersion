@@ -28,7 +28,7 @@ namespace NTN
 
 	double AntennaPattern_NTN1_3D(double az_deg, double el_deg)
 	{
-		double AP_3D_dB = AP_gain - std::min(-AntennaPattern_NTN1_V(el_deg) + AntennaPattern_NTN1_H(az_deg), AP_max);
+		double AP_3D_dB = AP_gain - std::min(-(AntennaPattern_NTN1_V(el_deg) + AntennaPattern_NTN1_H(az_deg)), AP_max);
 		return AP_3D_dB;
 	}
 }
@@ -61,7 +61,7 @@ namespace INDOOR
 
 	double AntennaPattern_Indoor_3D(double az_deg, double el_deg)
 	{
-		double AP_3D_dB = AP_gain - std::min(-AntennaPattern_Indoor_V(el_deg) + AntennaPattern_Indoor_H(az_deg), AP_max);
+		double AP_3D_dB = AP_gain - std::min(-(AntennaPattern_Indoor_V(el_deg) + AntennaPattern_Indoor_H(az_deg)), AP_max);
 		return AP_3D_dB;
 	}
 }
