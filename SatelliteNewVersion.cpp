@@ -40,28 +40,39 @@ void plotCDF(const std::vector<double>& data, const std::string& parameterName, 
 }
 
 // Функция для вычисления диаграммы направленности
-void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) {
+void calculateDishPattern(Eigen::VectorXd& teta_rad, Eigen::VectorXd& AP_dB, double rDish_WL) 
+{
     double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
-    for (int i = 0; i < teta_rad.size(); ++i) {
+
+    for (int i = 0; i < teta_rad.size(); ++i) 
+    {
         double teta = teta_rad(i);
-        if (teta == 0) {
+        if (teta == 0) 
+        {
             AP_dB(i) = 1.0;
         }
-        else {
+        else 
+        {
             double bessel_arg = 2 * M_PI * rDish_WL * sin(teta);
             double bessel_val = std::abs(std::cyl_bessel_j(1, bessel_arg));
+            //double bessel_val = std::cyl_bessel_j(1, bessel_arg);
             double res = 4 * std::pow(bessel_val / bessel_arg, 2);
+            //double res = 4 * std::pow(std::abs(bessel_val / bessel_arg), 2);
             AP_dB(i) = 10 * log10(res) + Gain;
+            //AP_lin(i) = pow(10, AP_dB(i)); - linear scale
         }
     }
 }
 
 // Функция для поиска индексов совпадающих элементов
-std::vector<int> findMatchingIndices(const std::vector<Eigen::Vector2d>& uvSet, const std::vector<Eigen::Vector2d>& uvSetCore) {
+std::vector<int> findMatchingIndices(const std::vector<Eigen::Vector2d>& uvSet, const std::vector<Eigen::Vector2d>& uvSetCore) 
+{
     std::vector<int> matchingIndices;
     std::unordered_set<Eigen::Vector2d, Vector2dHash> coreSet(uvSetCore.begin(), uvSetCore.end());
-    for (int i = 0; i < uvSet.size(); ++i) {
-        if (coreSet.find(uvSet[i]) != coreSet.end()) {
+    for (int i = 0; i < uvSet.size(); ++i) 
+    {
+        if (coreSet.find(uvSet[i]) != coreSet.end()) 
+        {
             matchingIndices.push_back(i);
         }
     }
@@ -69,14 +80,18 @@ std::vector<int> findMatchingIndices(const std::vector<Eigen::Vector2d>& uvSet, 
 }
 
 // Функция для маски (фильтра)
-std::vector<double> filterVector(const std::vector<double>& inputVector, const std::vector<int>& mask) {
+std::vector<double> filterVector(const std::vector<double>& inputVector, const std::vector<int>& mask) 
+{
     std::vector<double> filteredVector;
-    if (inputVector.size() != mask.size()) {
+    if (inputVector.size() != mask.size()) 
+    {
         std::cerr << "Error: inputVector and mask have different sizes!" << std::endl;
         return filteredVector;
     }
-    for (size_t i = 0; i < mask.size(); ++i) {
-        if (mask[i] == 1) {
+    for (size_t i = 0; i < mask.size(); ++i) 
+    {
+        if (mask[i] == 1) 
+        {
             filteredVector.push_back(inputVector[i]);
         }
     }
@@ -84,21 +99,26 @@ std::vector<double> filterVector(const std::vector<double>& inputVector, const s
 }
 
 // Функция для фильтрации строк матрицы
-MatrixXd filterMatrixRows(const MatrixXd& inputMatrix, const std::vector<int>& mask) {
-    if (mask.size() != inputMatrix.rows()) {
+MatrixXd filterMatrixRows(const MatrixXd& inputMatrix, const std::vector<int>& mask) 
+{
+    if (mask.size() != inputMatrix.rows()) 
+    {
         std::cerr << "Error: Mask size does not match the number of rows in the matrix!" << std::endl;
         return MatrixXd();
     }
     int numRowsToKeep = 0;
-    for (int value : mask) {
-        if (value == 1) {
+    for (int value : mask) 
+    {
+        if (value == 1) 
+        {
             numRowsToKeep++;
         }
     }
     MatrixXd filteredMatrix(numRowsToKeep, inputMatrix.cols());
     int filteredRowIndex = 0;
     for (int i = 0; i < mask.size(); ++i) {
-        if (mask[i] == 1) {
+        if (mask[i] == 1) 
+        {
             filteredMatrix.row(filteredRowIndex) = inputMatrix.row(i);
             filteredRowIndex++;
         }
@@ -106,9 +126,11 @@ MatrixXd filterMatrixRows(const MatrixXd& inputMatrix, const std::vector<int>& m
     return filteredMatrix;
 }
 
-int main() {
+int main() 
+{
     Engine* ep = engOpen("");
-    if (!ep) {
+    if (!ep) 
+    {
         std::cerr << "MATLAB Engine no open" << std::endl;
         return 1;
     }
@@ -121,8 +143,8 @@ int main() {
     MatrixXd TableLOS;
     MatrixXd TableNLOS;
 
-    if (gear) {
-
+    if (gear) 
+    {
         std::vector<std::string> scenarios = { "DenseUrban", "Urban", "Suburban", "Rural" };
         std::vector<std::string> frequencyBands = { "S", "Ka" };
 
@@ -146,19 +168,22 @@ int main() {
 
         // Frequency band selection
         std::cout << "Select a frequency band:\n";
-        for (size_t i = 0; i < frequencyBands.size(); ++i) {
+        for (size_t i = 0; i < frequencyBands.size(); ++i)
+        {
             std::cout << i + 1 << ". " << frequencyBands[i] << " band\n";
         }
         std::cout << "Enter frequency band number (1-" << frequencyBands.size() << "): ";
         int frequencyChoice;
         std::cin >> frequencyChoice;
-        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) {
+        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) 
+        {
             std::cout << "Invalid choice. Please try again.\n";
             return 1;
         }
         double f = (frequencyChoice == 1) ? 2.0 : 20.0;
 
-        for (size_t i = 0; i < scenarios.size(); ++i) {
+        for (size_t i = 0; i < scenarios.size(); ++i) 
+        {
             const auto& scenario = scenarios[i];
 
             auto start = std::chrono::high_resolution_clock::now();
@@ -192,8 +217,8 @@ int main() {
             TableLOS = GenerateMatrix(true, f, scenario);
             TableNLOS = GenerateMatrix(false, f, scenario);
 
-            for (auto& link : UEswithSat.links.getLinks()) {
-
+            for (auto& link : UEswithSat.links.getLinks()) 
+            {
                 int index = int(AngleForLSP(link.elevationAngle)) / 10;
                 link.isLos = CalculateLOSProbability(index, scenario);
 
@@ -238,7 +263,8 @@ int main() {
 
                 double PL_lin_magnitude = pow(10, -1 * PL_dB / 20);
 
-                for (int i = 0; i < static_cast<int>(rRays.size()); ++i) {
+                for (int i = 0; i < static_cast<int>(rRays.size()); ++i) 
+                {
                     Eigen::Vector3d rotatedVector = rotMatrix * (link.userPosition - link.satellitePosition).normalized();
                     double theta = std::acos(rRays[i].dot(rotatedVector));
                     double Gain = 10 * log10(std::pow(M_PI * 2 * rDish_WL, 2)) - 2.4478;
@@ -260,8 +286,10 @@ int main() {
                 ClusterDelay_sec_values.insert(ClusterDelay_sec_values.end(), link.clusterScaledDelays.begin(), link.clusterScaledDelays.end());
                 //ClusterPower_lin_values.insert(ClusterPower_lin_values.end(), clusterPower.first.begin(), clusterPower.first.end());
 
-                for (const auto& value : clusterPower.first) {
-                    if (value != 0) {
+                for (const auto& value : clusterPower.first) 
+                {
+                    if (value != 0) 
+                    {
                         ClusterPower_lin_values.push_back(value);
                     }
                 }
@@ -274,9 +302,12 @@ int main() {
                 ZSA_deg_values.push_back(link.ZSA_deg);
                 ZSD_deg_values.push_back(link.ZSD_deg);
 
-                for (int n = 0; n < link.AOA_n_m.rows(); ++n) {
-                    if (!link.isLos && n != 0) {
-                        if (link.AOA_n_m(n, 0) != INFINITY || link.AOA_n_m(n, 0) != -INFINITY) {
+                for (int n = 0; n < link.AOA_n_m.rows(); ++n) 
+                {
+                    if (!link.isLos && n != 0) 
+                    {
+                        if (link.AOA_n_m(n, 0) != INFINITY || link.AOA_n_m(n, 0) != -INFINITY) 
+                        {
                             AOD_values.insert(AOD_values.end(), link.AOD_n_m.row(n).begin(), link.AOD_n_m.row(n).end());
                             AOA_values.insert(AOA_values.end(), link.AOA_n_m.row(n).begin(), link.AOA_n_m.row(n).end());
                             ZOD_values.insert(ZOD_values.end(), link.ZOD_n_m.row(n).begin(), link.ZOD_n_m.row(n).end());
@@ -316,10 +347,13 @@ int main() {
             plotCDF(ZOA_values, "ZOA values, degree", scenario, ep, 13, frequencyChoice, frequencyBands);
             engEvalString(ep, "xlim([0 180])");
 
-            for (int rayIndex : RayUElist) {
+            for (int rayIndex : RayUElist) 
+            {
                 bool found = false;
-                for (int coreIndex : indRayCorelist) {
-                    if (coreIndex == rayIndex) {
+                for (int coreIndex : indRayCorelist) 
+                {
+                    if (coreIndex == rayIndex) 
+                    {
                         found = true;
                         break;
                     }
@@ -340,11 +374,13 @@ int main() {
         }
 
         int userInput = 1;
-        while (userInput) {
+        while (userInput) 
+        {
             std::cout << "Enter 0 to close all figures : ";
             std::cin >> userInput;
 
-            if (userInput == 0) {
+            if (userInput == 0) 
+            {
                 // Close all figures in MATLAB
                 engEvalString(ep, "close all;");
                 engClose(ep);
@@ -353,28 +389,30 @@ int main() {
         }
         engClose(ep);
     }
-    else {
-
+    else 
+    {
         std::vector<std::string> scenarios = { "DenseUrban", "Urban", "Suburban", "Rural" };
         std::vector<std::string> frequencyBands = { "S", "Ka" };
 
-
         // Frequency band selection
         std::cout << "Select a frequency band:\n";
-        for (size_t i = 0; i < frequencyBands.size(); ++i) {
+        for (size_t i = 0; i < frequencyBands.size(); ++i) 
+        {
             std::cout << i + 1 << ". " << frequencyBands[i] << " band\n";
         }
         std::cout << "Enter frequency band number (1-" << frequencyBands.size() << "): ";
         int frequencyChoice;
         std::cin >> frequencyChoice;
-        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) {
+        if (frequencyChoice < 1 || frequencyChoice > frequencyBands.size()) 
+        {
             std::cout << "Invalid choice. Please try again.\n";
             return 1;
         }
         double f = (frequencyChoice == 1) ? 2.0 : 20.0;
 
         std::ifstream file("setofangles.txt");  // Убедитесь, что путь к файлу правильный
-        if (!file.is_open()) {
+        if (!file.is_open()) 
+        {
             std::cerr << "File no open!" << std::endl;
             return 1;
         }
@@ -382,17 +420,20 @@ int main() {
         std::vector<double> data;
         double value;
 
-        while (file >> value) {
+        while (file >> value) 
+        {
             std::vector<double> row;
             data.push_back(value);
-            while (file.peek() != '\n' && file >> value) {
+            while (file.peek() != '\n' && file >> value) 
+            {
                 data.push_back(value);
             }
         }
 
         file.close();
 
-        for (size_t i = 0; i < scenarios.size(); ++i) {
+        for (size_t i = 0; i < scenarios.size(); ++i) 
+        {
             const auto& scenario = scenarios[i];
             auto start = std::chrono::high_resolution_clock::now();
 
@@ -402,7 +443,8 @@ int main() {
             TableLOS = GenerateMatrix(true, f, scenario);
             TableNLOS = GenerateMatrix(false, f, scenario);
 
-            for (auto& angleEL : data) {
+            for (auto& angleEL : data) 
+            {
                 int index = (AngleForLSP(angleEL)) / 10;
                 LinkData link;
                 link.elevationAngle = angleEL;
@@ -431,8 +473,10 @@ int main() {
                 ClusterDelay_sec_values.insert(ClusterDelay_sec_values.end(), link.clusterScaledDelays.begin(), link.clusterScaledDelays.end());
                 //ClusterPower_lin_values.insert(ClusterPower_lin_values.end(), clusterPower.first.begin(), clusterPower.first.end());
 
-                for (auto& value : clusterPower.first) {
-                    if (value != 0.0) {
+                for (auto& value : clusterPower.first) 
+                {
+                    if (value != 0.0) 
+                    {
                         ClusterPower_lin_values.push_back(value);
                     }
                 }
@@ -478,11 +522,13 @@ int main() {
             std::cout << "Elapsed time for scenario " << scenario << ": " << elapsed.count() << " s\n";
         }
         int userInput = 1;
-        while (userInput) {
+        while (userInput) 
+        {
             std::cout << "Enter 0 to close all figures : ";
             std::cin >> userInput;
 
-            if (userInput == 0) {
+            if (userInput == 0) 
+            {
                 // Close all figures in MATLAB
                 engEvalString(ep, "close all;");
                 engClose(ep);

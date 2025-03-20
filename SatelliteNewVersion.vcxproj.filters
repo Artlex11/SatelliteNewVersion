@@ -48,6 +48,9 @@
     <ClCompile Include="SmallScaleParameters.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AntennasPatterns.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Generators.h">
@@ -78,6 +81,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="SmallScaleParameters.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AntennasPatterns.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
