@@ -6,7 +6,8 @@
 #include "Generators.h"
 #include "links.h"
 #include <random>
-#include "Antennas.h"
+#include <cmath>
+#include "AntennasPatterns.h"
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
@@ -18,6 +19,8 @@
 namespace ChannelMatrixH {
 
 	Eigen::MatrixXcd generateRayGain(LinkData& link);
+
+	void calculateExponents(LinkData& link, Antenna& antennaUE, Antenna& antennaSat, double frequency, double velocity);
 }
 
 

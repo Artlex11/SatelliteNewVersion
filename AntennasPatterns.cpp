@@ -77,7 +77,8 @@ namespace AntennaPattern {
 
 }
 
-namespace AntennaArray {
+namespace AntennaArray 
+{
     Eigen::MatrixXd createAntennaArray_Mg_Ng_P_M_N(int Mg, int Ng, int M, int N, double frequency, double spacing)
     {
         double lambda = 3e8 / (frequency * 1e9);

@@ -5,7 +5,7 @@
 #include <engine.h>
 #include <fstream>
 
-#include "satellite_link.h"
+#include "NTN_Deployment.h"
 #include "Tables.h"
 #include "LOS_Probability.h"
 #include "Pathloss.h"
@@ -13,7 +13,7 @@
 #include "SmallScaleParameters.h"
 #include "LinkBudget.h"
 #include "matlab_plot.h"
-#include "Antennas.h"
+#include "AntennasPatterns.h"
 #include "ChannelMatrix.h"
 
 void plotAntennaArray(Engine* ep, const Eigen::MatrixXd& antennaArray, const Eigen::Vector3d& UEorSat) {
@@ -160,7 +160,7 @@ int main() {
         std::vector<std::string> frequencyBands = { "S", "Ka" };
 
         int nTiersCore = 2, nTiresWrArnd = 2, nUePerCell;
-        double satHeightKm = 600.0, elMinDegrees = 10.0, elTargetDegrees = 50.0, azTargetDegrees = 0.0;
+        double satHeightKm = 600.0, elMinDegrees = 10.0, elTargetDegrees = 50.0, azTargetDegrees = 0.0, velocity = 3.0;
 
         //std::cout << "Enter number of tiers in the core: ";
         //std::cin >> nTiersCore;
@@ -280,27 +280,13 @@ int main() {
 
 
                 Eigen::MatrixXcd rayGainMatrix = ChannelMatrixH::generateRayGain(link);
+                ChannelMatrixH::calculateExponents(link, link.antennaUE, link.antennaSat, f, velocity);
 
                 //std::cout << rayGainMatrix.size()<< "\n";
 
                 /*auto end = std::chrono::high_resolution_clock::now();
                 std::chrono::duration<double> elapsed = end - start;
                 std::cout << "Elapsed time for scenario " << scenario << ": " << elapsed.count() << " s\n";*/
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
                 //Потери в канале//
                 double d = CalculateDistance(EARTH_RADIUS, satHeightKm, link.elevationAngle * PI / 180);

@@ -4,7 +4,8 @@
 #include <Eigen/Dense>
 #include <vector>
 
-struct Antenna {
+struct Antenna 
+{
     Eigen::MatrixXd antennaArray;
     std::string pattern;
     std::vector<double> anglesPol;
@@ -14,7 +15,8 @@ struct Antenna {
 };
 
 // Структура для хранения всех необходимых данных
-struct LinkData {
+struct LinkData 
+{
     Eigen::Vector3d userPosition;
     Eigen::Vector3d satellitePosition;
     double elevationAngle;
@@ -56,7 +58,8 @@ struct LinkData {
 };
 
 // Класс для работы с данными связей
-class Links {
+class Links 
+{
 
 public:
 
