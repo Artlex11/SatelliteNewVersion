@@ -2,8 +2,7 @@
 
 // конструктор класса SatelliteLink
 SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, double satHeightKm, double elMinDegrees, double elTargetDegrees, double azTargetDegrees)
-    : nTiersCore(nTiersCore), nTiresWrArnd(nTiresWrArnd), nUePerCell(nUePerCell), satHeightKm(satHeightKm), elMinDegrees(elMinDegrees), elTargetDegrees(elTargetDegrees), azTargetDegrees(azTargetDegrees) 
-{
+    : nTiersCore(nTiersCore), nTiresWrArnd(nTiresWrArnd), nUePerCell(nUePerCell), satHeightKm(satHeightKm), elMinDegrees(elMinDegrees), elTargetDegrees(elTargetDegrees), azTargetDegrees(azTargetDegrees) {
     nTiers = nTiersCore + nTiresWrArnd;
     nCells = 1 + (nTiers * (nTiers + 1) * 3);
     nUEs = nCells * nUePerCell;
@@ -13,7 +12,7 @@ SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, d
     uvBeamRadius = uvStep / std::sqrt(3);
 
 
-    //xyzSat = Eigen::Vector3d(1.0, 0.0, 0.0);
+    //xyzSat = Eigen::Vector3d(0.0, 1.0, 1.0);
     xyzSat << RandomGenerators::generateGauss(0.0, 1.0),
         RandomGenerators::generateGauss(0.0, 1.0),
         RandomGenerators::generateGauss(0.0, 1.0);
@@ -25,10 +24,8 @@ SatelliteLink::SatelliteLink(int nTiersCore, int nTiresWrArnd, int nUePerCell, d
 
 
 
-void SatelliteLink::generateLinks() 
-{
+void SatelliteLink::generateLinks() {
     std::vector<Eigen::Vector3d> xyzUEs_all(nUEs);
-
     xyzUEs_all.reserve(nUEs);
 
     int UEcnt = 0;
@@ -41,16 +38,16 @@ void SatelliteLink::generateLinks()
     const double threshold = rEarth * std::cos(phiMax) * rEarth;
     const double uvBeamRadiusSquared = uvBeamRadius * uvBeamRadius;
 
-    Eigen::Vector3d globalZ(0.0, 0.0, 1.0);
+    Eigen::Vector3d globalZ(0.0, 0.0, -1.0);
+    Eigen::Vector3d xyzSatToEarth = -xyzSat.normalized();
 
-
-    if (!xyzSat.normalized().isApprox(globalZ) && !xyzSat.normalized().isApprox(-globalZ)) {
-        p1 = xyzSat.cross(globalZ).normalized();
+    if (!xyzSatToEarth.isApprox(globalZ) && !xyzSatToEarth.isApprox(-globalZ)) {
+        p1 = xyzSatToEarth.cross(globalZ).normalized();
     }
     else {
         p1 = Eigen::Vector3d(0.0, -1.0, 0.0);
     }
-    p2 = xyzSat.cross(p1).normalized();
+    p2 = -xyzSatToEarth.cross(p1).normalized();
 
 
 

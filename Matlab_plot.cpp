@@ -68,7 +68,7 @@ void MatlabPlot::plotEarth(Engine* ep) {
     engEvalString(ep, "x_sphere = R * cos(phi) .* cos(theta);");
     engEvalString(ep, "y_sphere = R * sin(phi) .* cos(theta);");
     engEvalString(ep, "z_sphere = R * sin(theta);");
-    engEvalString(ep, "plot3(0,0,0,'r.'); ");
+    //engEvalString(ep, "plot3(0,0,0,'r.'); ");
     engEvalString(ep, "surf(x_sphere, y_sphere, z_sphere, 'FaceColor', [0.7 0.7 0.7], 'FaceAlpha', 0.5, 'EdgeColor', 'none', 'DisplayName', 'Сфера Земли');");
     engEvalString(ep, "axis equal;");
     engEvalString(ep, "xlabel('x, km'); ylabel('y, km'); zlabel('z, km');");

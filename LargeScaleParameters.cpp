@@ -50,9 +50,12 @@ void LSP::initializeLosParameters(LinkData& link, VectorXd& Parameters) {
 
 
     Vector<double, 7> value;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> gaussDist(0.0, 1.0);
 #pragma omp parallel for
     for (int i = 0; i < 7; ++i) {
-        value(i) = RandomGenerators::generateGauss(0.0, 1.0);
+        value(i) = gaussDist(gen);
     }
     Vector<double, 7> means;
     Matrix<double, 7, 7> C;
@@ -68,17 +71,17 @@ void LSP::initializeLosParameters(LinkData& link, VectorXd& Parameters) {
         ZSDvsSF* StandardDeviationZSD* StandardDeviationSF, ZSDvsK* StandardDeviationZSD* StandardDeviationK, ZSDvsDS* StandardDeviationZSD* StandardDeviationDS, ZSDvsASD* StandardDeviationZSD* StandardDeviationASD, ZSDvsASA* StandardDeviationZSD* StandardDeviationASA, StandardDeviationZSD* StandardDeviationZSD, ZSDvsZSA* StandardDeviationZSD* StandardDeviationZSA,
         ZSAvsSF* StandardDeviationZSA* StandardDeviationSF, ZSAvsK* StandardDeviationZSA* StandardDeviationK, ZSAvsDS* StandardDeviationZSA* StandardDeviationDS, ZSAvsASD* StandardDeviationZSA* StandardDeviationASD, ZSAvsASA* StandardDeviationZSA* StandardDeviationASA, ZSDvsZSA* StandardDeviationZSA* StandardDeviationZSD, StandardDeviationZSA* StandardDeviationZSA;
 
-    //Matrix<double, 7, 7> L = C.llt().matrixL();
+
 
     value = C.llt().matrixL() * value + means;
 
     link.SF_db = value[0];
     link.K_db = value[1];
-    link.DS_sec = pow(10, value[2]);
-    link.ASD_deg = pow(10, value[3]);
-    link.ASA_deg = pow(10, value[4]);
-    link.ZSD_deg = pow(10, value[5]);
-    link.ZSA_deg = pow(10, value[6]);
+    link.DS_sec = pow(10.0, value[2]);
+    link.ASD_deg = pow(10.0, value[3]);
+    link.ASA_deg = pow(10.0, value[4]);
+    link.ZSD_deg = pow(10.0, value[5]);
+    link.ZSA_deg = pow(10.0, value[6]);
 
 
 
@@ -118,9 +121,12 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
     double ZSDvsZSA = Parameters[26]; // +
 
     Vector<double, 6> value;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::normal_distribution<> gaussDist(0.0, 1.0);
 #pragma omp parallel for
     for (int i = 0; i < 6; ++i) {
-        value(i) = RandomGenerators::generateGauss(0.0, 1.0);
+        value(i) = gaussDist(gen);
     }
     Vector<double, 6> means;
     Matrix<double, 6, 6> C;
@@ -141,11 +147,11 @@ void LSP::initializeNlosParameters(LinkData& link, VectorXd& Parameters) {
 
     link.SF_db = value[0];
     link.K_db = -INFINITY;
-    link.DS_sec = pow(10, value[1]);
-    link.ASD_deg = pow(10, value[2]);
-    link.ASA_deg = pow(10, value[3]);
-    link.ZSD_deg = pow(10, value[4]);
-    link.ZSA_deg = pow(10, value[5]);
+    link.DS_sec = pow(10.0, value[1]);
+    link.ASD_deg = pow(10.0, value[2]);
+    link.ASA_deg = pow(10.0, value[3]);
+    link.ZSD_deg = pow(10.0, value[4]);
+    link.ZSA_deg = pow(10.0, value[5]);
 
 
 }

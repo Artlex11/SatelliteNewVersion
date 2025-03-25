@@ -133,6 +133,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AntennasPatterns.cpp" />
+    <ClCompile Include="ChannelMatrix.cpp" />
     <ClCompile Include="Generators.cpp" />
     <ClCompile Include="LargeScaleParameters.cpp" />
     <ClCompile Include="LinkBudget.cpp" />
@@ -147,6 +148,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AntennasPatterns.h" />
+    <ClInclude Include="ChannelMatrix.h" />
     <ClInclude Include="Generators.h" />
     <ClInclude Include="LargeScaleParameters.h" />
     <ClInclude Include="LinkBudget.h" />

@@ -4,6 +4,14 @@
 #include <Eigen/Dense>
 #include <vector>
 
+struct Antenna {
+    Eigen::MatrixXd antennaArray;
+    std::string pattern;
+    std::vector<double> anglesPol;
+
+    double  bearingAntArray;
+    double  elevationAntArray;
+};
 
 // Структура для хранения всех необходимых данных
 struct LinkData {
@@ -31,12 +39,19 @@ struct LinkData {
     std::vector<double> clusterDelays;
     std::vector<double> clusterScaledDelays; // только для прямой видимости , но не используется в вычислениях 
 
+    Eigen::MatrixXd powerInRays;
+    Eigen::MatrixXd delayInRays;
+
+
+
     Eigen::MatrixXd AOD_n_m;
     Eigen::MatrixXd AOA_n_m;
     Eigen::MatrixXd ZOD_n_m;
     Eigen::MatrixXd ZOA_n_m;
     Eigen::MatrixXd XPR_n_m;
 
+    Antenna antennaUE;
+    Antenna antennaSat;
 
 };
 
